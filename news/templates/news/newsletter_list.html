@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% block title %}Newsletters · Daily Dispatch{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-end mb-4 flex-wrap gap-2">
+  <div>
+    <div class="text-eyebrow mb-1">Curated collections</div>
+    <h1 class="display-hero mb-0">Newsletters</h1>
+  </div>
+  {% if perms.news.add_newsletter %}
+    <a href="{% url 'newsletter-create' %}" class="btn btn-accent btn-pill">
+      <i class="bi bi-plus-lg me-1" aria-hidden="true"></i> New newsletter
+    </a>
+  {% endif %}
+</div>
+
+{% if newsletters %}
+  <div class="row g-4">
+    {% for newsletter in newsletters %}
+      <div class="col-md-6 col-lg-4">
+        <article class="article-card">
+          <div class="p-4 d-flex flex-column h-100">
+            <div class="text-eyebrow mb-2">
+              <i class="bi bi-envelope-paper me-1" aria-hidden="true"></i> Newsletter
+            </div>
+            <h2 class="article-card__title">
+              <a href="{% url 'newsletter-detail' newsletter.pk %}">{{ newsletter.title }}</a>
+            </h2>
+            <p class="article-card__excerpt mb-3 flex-grow-1">
+              {{ newsletter.description|default:"No description provided." }}
+            </p>
+            <div class="article-card__meta pt-3 border-top mb-3">
+              <span class="avatar avatar--sm" aria-hidden="true">{{ newsletter.author.username|first }}</span>
+              <span>{{ newsletter.author.username }}</span>
+              <span aria-hidden="true">&middot;</span>
+              <span>{{ newsletter.created_at|date:"M j, Y" }}</span>
+            </div>
+            {% if perms.news.change_newsletter or perms.news.delete_newsletter %}
+              <div class="d-flex gap-2">
+                {% if perms.news.change_newsletter %}
+                  <a class="btn btn-sm btn-outline-secondary btn-pill flex-fill"
+                     href="{% url 'newsletter-update' newsletter.pk %}">
+                    <i class="bi bi-pencil me-1" aria-hidden="true"></i> Edit
+                  </a>
+                {% endif %}
+                {% if perms.news.delete_newsletter %}
+                  <a class="btn btn-sm btn-outline-danger btn-pill"
+                     href="{% url 'newsletter-delete' newsletter.pk %}"
+                     aria-label="Delete newsletter {{ newsletter.title }}">
+                    <i class="bi bi-trash" aria-hidden="true"></i>
+                  </a>
+                {% endif %}
+              </div>
+            {% endif %}
+          </div>
+        </article>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="empty-state">
+    <div class="empty-state__icon"><i class="bi bi-envelope-x" aria-hidden="true"></i></div>
+    <p class="empty-state__title">No newsletters yet</p>
+    <p class="mb-0">Check back soon for curated collections.</p>
+  </div>
+{% endif %}
+{% endblock %}

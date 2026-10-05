@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+{% block title %}{{ article.title }} · Daily Dispatch{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+
+    <nav aria-label="Breadcrumb" class="mb-3">
+      <ol class="breadcrumb small mb-0">
+        <li class="breadcrumb-item"><a href="{% url 'article-list' %}">Articles</a></li>
+        <li class="breadcrumb-item active text-truncate" aria-current="page"
+            style="max-width: 320px;">{{ article.title }}</li>
+      </ol>
+    </nav>
+
+    {% if article.status == 'pending' %}
+      <div class="alert alert-warning d-flex align-items-center gap-2" role="status">
+        <i class="bi bi-hourglass-split" aria-hidden="true"></i>
+        <div>This article is awaiting review by an editor.</div>
+      </div>
+    {% elif article.status == 'rejected' %}
+      <div class="alert alert-danger" role="alert">
+        <div class="fw-semibold mb-1">
+          <i class="bi bi-x-octagon me-1" aria-hidden="true"></i> This article was rejected
+        </div>
+        {% if article.rejection_reason %}
+          <div class="small">{{ article.rejection_reason }}</div>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    <article class="bg-white rounded-4 shadow-sm p-4 p-lg-5">
+      <div class="text-eyebrow mb-2">
+        {% if article.publisher %}{{ article.publisher.name }}{% else %}Independent{% endif %}
+      </div>
+
+      <h1 class="display-hero mb-3">{{ article.title }}</h1>
+
+      <div class="d-flex align-items-center gap-3 py-3 border-top border-bottom mb-4 flex-wrap">
+        <span class="avatar avatar--lg" aria-hidden="true">{{ article.author.username|first }}</span>
+        <div class="flex-grow-1">
+          <div class="fw-semibold">{{ article.author.username }}</div>
+          <div class="text-muted small">
+            <time datetime="{{ article.created_at|date:'c' }}">
+              {{ article.created_at|date:"F j, Y" }}
+            </time>
+            &middot; {{ article.content|wordcount }} words
+          </div>
+        </div>
+        {% if perms.news.change_article %}
+          <a href="{% url 'article-update' article.pk %}"
+             class="btn btn-sm btn-outline-secondary btn-pill">
+            <i class="bi bi-pencil me-1" aria-hidden="true"></i> Edit
+          </a>
+        {% endif %}
+      </div>
+
+      <div class="article-body" style="font-size: 1.125rem; line-height: 1.75;">
+        {{ article.content|linebreaks }}
+      </div>
+
+      <div class="d-flex flex-wrap gap-2 pt-4 mt-4 border-top">
+        <button type="button"
+                class="btn btn-outline-secondary btn-sm btn-pill"
+                id="copy-link-btn"
+                data-copied-label="Copied!">
+          <i class="bi bi-link-45deg me-1" aria-hidden="true"></i>
+          <span class="copy-label">Copy link</span>
+        </button>
+        <span id="copy-status" class="visually-hidden" role="status" aria-live="polite"></span>
+
+        {% if perms.news.delete_article %}
+          <a href="{% url 'article-delete' article.pk %}"
+             class="btn btn-outline-danger btn-sm btn-pill ms-auto">
+            <i class="bi bi-trash me-1" aria-hidden="true"></i> Delete
+          </a>
+        {% endif %}
+      </div>
+    </article>
+
+    {% if related_articles %}
+      <section class="mt-5" aria-labelledby="related-heading">
+        <div class="text-eyebrow mb-3" id="related-heading">
+          More from {{ article.author.username }}
+        </div>
+        <div class="row g-3">
+          {% for related in related_articles %}
+            <div class="col-md-6">
+              {% include 'partials/_article_card.html' with article=related %}
+            </div>
+          {% endfor %}
+        </div>
+      </section>
+    {% endif %}
+
+  </div>
+</div>
+
+<script>
+  (function () {
+    var btn = document.getElementById('copy-link-btn');
+    var status = document.getElementById('copy-status');
+    if (!btn) return;
+    btn.addEventListener('click', function () {
+      navigator.clipboard.writeText(window.location.href).then(function () {
+        var label = btn.querySelector('.copy-label');
+        var original = label.textContent;
+        label.textContent = btn.dataset.copiedLabel;
+        status.textContent = 'Link copied to clipboard';
+        setTimeout(function () { label.textContent = original; status.textContent = ''; }, 2000);
+      });
+    });
+  })();
+</script>
+{% endblock %}

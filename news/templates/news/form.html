@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% block title %}{% if object %}Edit{% else %}Create{% endif %} · Daily Dispatch{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="bg-white rounded-4 shadow-sm p-4 p-lg-5">
+
+      <div class="text-eyebrow mb-1">{% if object %}Editing{% else %}New{% endif %}</div>
+      <h1 class="display-hero mb-4">
+        {% if object %}Edit{% else %}Create{% endif %}
+      </h1>
+
+      <form method="post" novalidate>
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+          <div class="alert alert-danger" role="alert">
+            {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+          </div>
+        {% endif %}
+
+        {% for field in form %}
+          <div class="mb-3">
+            {% if field.field.widget.input_type == 'checkbox' %}
+              <div class="form-check">
+                {{ field }}
+                <label class="form-check-label" for="{{ field.id_for_label }}">
+                  {{ field.label }}
+                </label>
+              </div>
+            {% else %}
+              <label class="form-label" for="{{ field.id_for_label }}">
+                {{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}
+              </label>
+              {{ field }}
+            {% endif %}
+
+            {% if field.help_text %}
+              <div class="form-text">{{ field.help_text }}</div>
+            {% endif %}
+
+            {% if field.errors %}
+              <div class="invalid-feedback d-block">
+                {% for error in field.errors %}{{ error }}{% endfor %}
+              </div>
+            {% endif %}
+          </div>
+        {% endfor %}
+
+        <div class="d-flex gap-2 pt-2">
+          <button class="btn btn-accent btn-pill px-4" type="submit">
+            <i class="bi bi-check2 me-1" aria-hidden="true"></i> Save
+          </button>
+          <a class="btn btn-link" href="{% url 'article-list' %}">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

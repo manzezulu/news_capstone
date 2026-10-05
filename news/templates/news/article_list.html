@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+{% block title %}Articles · Daily Dispatch{% endblock %}
+{% block content %}
+
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end mb-4 gap-3">
+  <div>
+    <div class="text-eyebrow mb-1">
+      {% if feed == 'subscribed' %}Personalized feed{% else %}Latest stories{% endif %}
+    </div>
+    <h1 class="display-hero mb-0">
+      {% if feed == 'subscribed' %}For you{% else %}The Dispatch{% endif %}
+    </h1>
+  </div>
+
+  <form method="get" class="d-flex gap-2" role="search" style="max-width: 380px;">
+    {% if feed %}<input type="hidden" name="feed" value="{{ feed }}">{% endif %}
+    <label for="article-search" class="visually-hidden">Search articles</label>
+    <div class="input-group">
+      <span class="input-group-text bg-white border-end-0">
+        <i class="bi bi-search text-muted" aria-hidden="true"></i>
+      </span>
+      <input type="search" id="article-search" name="q" value="{{ query }}"
+             class="form-control border-start-0"
+             placeholder="Search articles…"
+             autocomplete="off">
+    </div>
+    <button class="btn btn-dark btn-pill px-3" type="submit">Search</button>
+  </form>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-8">
+
+    {% if articles %}
+      {% with articles.0 as feature %}
+        <a href="{% url 'article-detail' feature.pk %}" class="text-decoration-none d-block mb-4">
+          <div class="feature-article">
+            <div class="text-eyebrow text-warning mb-2">
+              {% if feature.publisher %}{{ feature.publisher.name }}{% else %}Independent{% endif %}
+            </div>
+            <h2 class="feature-article__title mb-3">{{ feature.title }}</h2>
+            <p class="feature-article__excerpt mb-4">
+              {{ feature.content|truncatewords:40 }}
+            </p>
+            <div class="d-flex align-items-center gap-3 flex-wrap">
+              <span class="avatar" aria-hidden="true">{{ feature.author.username|first }}</span>
+              <div>
+                <div class="fw-semibold">{{ feature.author.username }}</div>
+                <div class="small opacity-75">{{ feature.created_at|date:"F j, Y" }}</div>
+              </div>
+              <span class="ms-auto btn btn-accent btn-pill btn-sm">
+                Read story <i class="bi bi-arrow-right ms-1" aria-hidden="true"></i>
+              </span>
+            </div>
+          </div>
+        </a>
+      {% endwith %}
+
+      <div class="row g-4">
+        {% for article in articles|slice:"1:" %}
+          <div class="col-md-6">
+            {% include 'partials/_article_card.html' with article=article %}
+          </div>
+        {% endfor %}
+      </div>
+
+    {% else %}
+      <div class="empty-state">
+        <div class="empty-state__icon"><i class="bi bi-journal-x" aria-hidden="true"></i></div>
+        <p class="empty-state__title">No articles found</p>
+        <p class="mb-3">
+          {% if query %}Try a different search term.{% else %}Check back soon.{% endif %}
+        </p>
+        {% if feed == 'subscribed' %}
+          <a href="{% url 'subscriptions' %}" class="btn btn-accent btn-pill">
+            <i class="bi bi-bookmark-heart me-1" aria-hidden="true"></i> Manage subscriptions
+          </a>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    {% include 'partials/_pagination.html' %}
+  </div>
+
+  <aside class="col-lg-4" aria-label="Sidebar">
+    <div class="sidebar-card mb-4">
+      <div class="text-eyebrow mb-2">About</div>
+      <h2 class="h6 fw-bold mb-2">The Daily Dispatch</h2>
+      <p class="text-muted small mb-0">
+        Curated stories from independent journalists and publishers you trust.
+      </p>
+    </div>
+
+    {% if user.role == 'reader' and feed != 'subscribed' %}
+      <div class="sidebar-card mb-4 border-warning border-2">
+        <div class="text-eyebrow mb-2">Personalize</div>
+        <h2 class="h6 fw-bold mb-2">Build your own feed</h2>
+        <p class="text-muted small mb-3">
+          Subscribe to publishers and journalists to see only what matters to you.
+        </p>
+        <a href="{% url 'subscriptions' %}" class="btn btn-accent btn-sm btn-pill w-100">
+          Browse subscriptions
+        </a>
+      </div>
+    {% endif %}
+
+    <div class="sidebar-card">
+      <div class="text-eyebrow mb-3">Filters</div>
+      <div class="d-grid gap-2">
+        <a href="{% url 'article-list' %}"
+           class="btn btn-sm text-start {% if not feed %}btn-dark{% else %}btn-outline-dark{% endif %}">
+          <i class="bi bi-globe me-2" aria-hidden="true"></i> All articles
+        </a>
+        {% if user.role == 'reader' %}
+          <a href="{% url 'article-list' %}?feed=subscribed"
+             class="btn btn-sm text-start {% if feed == 'subscribed' %}btn-dark{% else %}btn-outline-dark{% endif %}">
+            <i class="bi bi-rss me-2" aria-hidden="true"></i> My subscriptions
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  </aside>
+</div>
+{% endblock %}

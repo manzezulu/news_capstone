@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% block title %}Review queue · Daily Dispatch{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-end mb-4 flex-wrap gap-2">
+  <div>
+    <div class="text-eyebrow mb-1">Editorial desk</div>
+    <h1 class="display-hero mb-0">Review queue</h1>
+  </div>
+  <span class="badge text-bg-warning rounded-pill fs-6 px-3 py-2">
+    {{ articles|length }} pending
+  </span>
+</div>
+
+{% if articles %}
+  <div class="d-grid gap-3">
+    {% for article in articles %}
+      <div class="card border-0 shadow-sm rounded-4 overflow-hidden review-row">
+        <div class="card-body p-4">
+          <div class="row align-items-start g-3">
+            <div class="col-lg-8">
+              <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+                <span class="badge badge-status--pending rounded-pill">Pending review</span>
+                {% if article.publisher %}
+                  <span class="badge rounded-pill text-bg-light border">
+                    <i class="bi bi-building me-1" aria-hidden="true"></i>{{ article.publisher.name }}
+                  </span>
+                {% else %}
+                  <span class="badge rounded-pill text-bg-light border">
+                    <i class="bi bi-person me-1" aria-hidden="true"></i>Independent
+                  </span>
+                {% endif %}
+              </div>
+
+              <h2 class="article-card__title">
+                <a href="{% url 'article-detail' article.pk %}">{{ article.title }}</a>
+              </h2>
+
+              <p class="article-card__excerpt mb-2">
+                {{ article.content|truncatewords:32 }}
+              </p>
+
+              <div class="article-card__meta">
+                <span class="avatar avatar--sm" aria-hidden="true">{{ article.author.username|first }}</span>
+                <span>{{ article.author.username }}</span>
+                <span aria-hidden="true">&middot;</span>
+                <span>{{ article.created_at|date:"M j, Y, H:i" }}</span>
+                <span aria-hidden="true">&middot;</span>
+                <span>{{ article.content|wordcount }} words</span>
+              </div>
+            </div>
+
+            <div class="col-lg-4">
+              <div class="d-grid gap-2">
+                <form method="post" action="{% url 'article-approve' article.pk %}">
+                  {% csrf_token %}
+                  <button class="btn btn-success w-100 btn-pill" type="submit">
+                    <i class="bi bi-check2-circle me-1" aria-hidden="true"></i> Approve
+                  </button>
+                </form>
+                <a class="btn btn-outline-secondary btn-pill"
+                   href="{% url 'article-update' article.pk %}">
+                  <i class="bi bi-pencil me-1" aria-hidden="true"></i> Edit
+                </a>
+                <a class="btn btn-outline-danger btn-pill"
+                   href="{% url 'article-delete' article.pk %}">
+                  <i class="bi bi-x-circle me-1" aria-hidden="true"></i> Reject
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="empty-state">
+    <div class="empty-state__icon"><i class="bi bi-check2-all" aria-hidden="true"></i></div>
+    <p class="empty-state__title">All caught up</p>
+    <p class="mb-0">There is nothing in the review queue right now.</p>
+  </div>
+{% endif %}
+{% endblock %}

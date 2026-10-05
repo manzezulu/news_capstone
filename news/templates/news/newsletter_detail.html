@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% block title %}{{ newsletter.title }} · Daily Dispatch{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+
+    <nav aria-label="Breadcrumb" class="mb-3">
+      <ol class="breadcrumb small mb-0">
+        <li class="breadcrumb-item"><a href="{% url 'newsletter-list' %}">Newsletters</a></li>
+        <li class="breadcrumb-item active text-truncate" aria-current="page"
+            style="max-width: 320px;">{{ newsletter.title }}</li>
+      </ol>
+    </nav>
+
+    <article class="bg-white rounded-4 shadow-sm p-4 p-lg-5">
+      <div class="text-eyebrow mb-2">Newsletter</div>
+      <h1 class="display-hero mb-3">{{ newsletter.title }}</h1>
+      {% if newsletter.description %}
+        <p class="lead text-muted">{{ newsletter.description }}</p>
+      {% endif %}
+
+      <div class="d-flex align-items-center gap-3 py-3 border-top border-bottom mb-4">
+        <span class="avatar avatar--lg" aria-hidden="true">{{ newsletter.author.username|first }}</span>
+        <div>
+          <div class="fw-semibold">{{ newsletter.author.username }}</div>
+          <div class="text-muted small">
+            <time datetime="{{ newsletter.created_at|date:'c' }}">
+              {{ newsletter.created_at|date:"F j, Y" }}
+            </time>
+          </div>
+        </div>
+      </div>
+
+      <h2 class="h5 mb-3">Articles in this newsletter</h2>
+      <ul class="list-group list-group-flush">
+        {% for article in newsletter.articles.all %}
+          <li class="list-group-item d-flex justify-content-between align-items-start px-0">
+            <div class="me-3">
+              <a class="fw-semibold" href="{% url 'article-detail' article.pk %}">
+                {{ article.title }}
+              </a>
+              <div class="text-muted small mt-1">
+                By {{ article.author.username }}
+                {% if article.publisher %} for {{ article.publisher.name }}{% endif %}
+              </div>
+            </div>
+            <i class="bi bi-arrow-up-right text-muted" aria-hidden="true"></i>
+          </li>
+        {% empty %}
+          <li class="list-group-item px-0 text-muted">
+            No articles in this newsletter yet.
+          </li>
+        {% endfor %}
+      </ul>
+    </article>
+  </div>
+</div>
+{% endblock %}

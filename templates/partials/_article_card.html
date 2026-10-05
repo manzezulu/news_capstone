@@ -1,0 +1,55 @@
+<article class="article-card">
+  <div class="p-4 d-flex flex-column h-100">
+    <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+      <span class="badge rounded-pill text-bg-light border text-muted fw-normal small">
+        {% if article.publisher %}
+          <i class="bi bi-building me-1" aria-hidden="true"></i>{{ article.publisher.name }}
+        {% else %}
+          <i class="bi bi-person me-1" aria-hidden="true"></i>Independent
+        {% endif %}
+      </span>
+      {% if article.status == 'pending' %}
+        <span class="badge badge-status--pending rounded-pill">Pending</span>
+      {% elif article.status == 'rejected' %}
+        <span class="badge badge-status--rejected rounded-pill">Rejected</span>
+      {% elif article.status == 'draft' %}
+        <span class="badge badge-status--draft rounded-pill">Draft</span>
+      {% endif %}
+    </div>
+
+    <h3 class="article-card__title">
+      <a href="{% url 'article-detail' article.pk %}">{{ article.title }}</a>
+    </h3>
+
+    <p class="article-card__excerpt mb-3 flex-grow-1">
+      {{ article.content|truncatewords:22 }}
+    </p>
+
+    <div class="article-card__meta pt-3 border-top">
+      <span class="avatar avatar--sm" aria-hidden="true">{{ article.author.username|first }}</span>
+      <span>{{ article.author.username }}</span>
+      <span aria-hidden="true">&middot;</span>
+      <span>{{ article.created_at|date:"M j, Y" }}</span>
+      <span aria-hidden="true">&middot;</span>
+      <span>{{ article.content|wordcount }} words</span>
+    </div>
+
+    {% if user.role == 'editor' or article.author_id == user.id %}
+      <div class="d-flex gap-2 mt-3">
+        {% if perms.news.change_article %}
+          <a class="btn btn-sm btn-outline-secondary btn-pill flex-fill"
+             href="{% url 'article-update' article.pk %}">
+            <i class="bi bi-pencil me-1" aria-hidden="true"></i> Edit
+          </a>
+        {% endif %}
+        {% if perms.news.delete_article %}
+          <a class="btn btn-sm btn-outline-danger btn-pill"
+             href="{% url 'article-delete' article.pk %}"
+             aria-label="Delete {{ article.title }}">
+            <i class="bi bi-trash" aria-hidden="true"></i>
+          </a>
+        {% endif %}
+      </div>
+    {% endif %}
+  </div>
+</article>

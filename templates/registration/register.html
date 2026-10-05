@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block title %}Register · Daily Dispatch{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-7 col-lg-6">
+    <div class="bg-white rounded-4 shadow-sm p-4 p-lg-5">
+      <div class="text-eyebrow mb-1">Join the desk</div>
+      <h1 class="display-hero mb-4">Create account</h1>
+
+      <form method="post" novalidate>
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+          <div class="alert alert-danger" role="alert">
+            {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+          </div>
+        {% endif %}
+
+        {% for field in form %}
+          <div class="mb-3">
+            <label class="form-label" for="{{ field.id_for_label }}">
+              {{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}
+            </label>
+            {{ field }}
+            {% if field.help_text %}
+              <div class="form-text">{{ field.help_text }}</div>
+            {% endif %}
+            {% for error in field.errors %}
+              <div class="invalid-feedback d-block">{{ error }}</div>
+            {% endfor %}
+          </div>
+        {% endfor %}
+
+        <button class="btn btn-accent btn-pill px-4 w-100 mb-3" type="submit">
+          Create account
+        </button>
+
+        <div class="text-center small">
+          Already have an account? <a href="{% url 'login' %}">Log in</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

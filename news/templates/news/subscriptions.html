@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+{% block title %}Subscriptions · Daily Dispatch{% endblock %}
+{% block content %}
+
+<div class="mb-4">
+  <div class="text-eyebrow mb-1">Personalize</div>
+  <h1 class="display-hero mb-0">Subscriptions</h1>
+  <p class="text-muted mb-0">Follow the publishers and journalists you want in your feed.</p>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="sidebar-card h-100">
+      <h2 class="h5 mb-3">
+        <i class="bi bi-building me-1 text-warning" aria-hidden="true"></i> Publishers
+      </h2>
+      {% if publishers %}
+        <ul class="list-group list-group-flush">
+          {% for publisher in publishers %}
+            <li class="list-group-item d-flex justify-content-between align-items-center px-0 flex-wrap gap-2">
+              <div>
+                <div class="fw-semibold">{{ publisher.name }}</div>
+                {% if publisher.description %}
+                  <div class="text-muted small">{{ publisher.description|truncatewords:12 }}</div>
+                {% endif %}
+              </div>
+              <form method="post"
+                    action="{% url 'toggle-subscription' 'publisher' publisher.pk %}">
+                {% csrf_token %}
+                <button class="btn btn-sm btn-pill {% if publisher.pk in my_publisher_ids %}btn-outline-danger{% else %}btn-accent{% endif %}"
+                        type="submit"
+                        aria-pressed="{% if publisher.pk in my_publisher_ids %}true{% else %}false{% endif %}">
+                  {% if publisher.pk in my_publisher_ids %}
+                    <i class="bi bi-check2 me-1" aria-hidden="true"></i> Subscribed
+                  {% else %}
+                    <i class="bi bi-plus-lg me-1" aria-hidden="true"></i> Subscribe
+                  {% endif %}
+                </button>
+              </form>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="text-muted mb-0">No publishers yet.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="sidebar-card h-100">
+      <h2 class="h5 mb-3">
+        <i class="bi bi-people me-1 text-warning" aria-hidden="true"></i> Journalists
+      </h2>
+      {% if journalists %}
+        <ul class="list-group list-group-flush">
+          {% for journalist in journalists %}
+            <li class="list-group-item d-flex justify-content-between align-items-center px-0 flex-wrap gap-2">
+              <div class="d-flex align-items-center gap-2">
+                <span class="avatar" aria-hidden="true">{{ journalist.username|first }}</span>
+                <div>
+                  <div class="fw-semibold">{{ journalist.username }}</div>
+                  <div class="text-muted small">{{ journalist.email }}</div>
+                </div>
+              </div>
+              <form method="post"
+                    action="{% url 'toggle-subscription' 'journalist' journalist.pk %}">
+                {% csrf_token %}
+                <button class="btn btn-sm btn-pill {% if journalist.pk in my_journalist_ids %}btn-outline-danger{% else %}btn-accent{% endif %}"
+                        type="submit"
+                        aria-pressed="{% if journalist.pk in my_journalist_ids %}true{% else %}false{% endif %}">
+                  {% if journalist.pk in my_journalist_ids %}
+                    <i class="bi bi-check2 me-1" aria-hidden="true"></i> Subscribed
+                  {% else %}
+                    <i class="bi bi-plus-lg me-1" aria-hidden="true"></i> Subscribe
+                  {% endif %}
+                </button>
+              </form>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="text-muted mb-0">No journalists yet.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
