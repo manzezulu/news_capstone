@@ -51,7 +51,7 @@ When an editor approves an article, every subscriber is emailed and the article 
 ## Quick start
 
 ```bash
-git clone [https://github.com/manzezulu/news_capstone.git]
+git clone https://github.com/manzezulu/news_capstone.git
 cd news_capstone
 
 python -m venv venv
