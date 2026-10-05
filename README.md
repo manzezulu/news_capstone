@@ -51,7 +51,7 @@ When an editor approves an article, every subscriber is emailed and the article 
 ## Quick start
 
 ```bash
-git clone https://github.com/<your-username>/news_capstone.git
+git clone [https://github.com/manzezulu/news_capstone.git]
 cd news_capstone
 
 python -m venv venv
@@ -59,8 +59,9 @@ source venv/bin/activate          # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
 # Create the MariaDB database first (see Database setup), then:
+python manage.py makemigrations
 python manage.py migrate
-python manage.py seed_demo
+python manage.py seed_demo     # pre builtdata for testing
 python manage.py runserver
 ```
 
@@ -84,8 +85,6 @@ Open <http://127.0.0.1:8000/> and log in with one of the [demo accounts](#demo-a
 CREATE DATABASE news_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER 'news_user'@'localhost' IDENTIFIED BY 'ChangeMe123!';
 GRANT ALL PRIVILEGES ON news_db.* TO 'news_user'@'localhost';
-
--- Django's test runner creates and drops "test_news_db", so grant that too:
 GRANT ALL PRIVILEGES ON `test\_news\_db`.* TO 'news_user'@'localhost';
 FLUSH PRIVILEGES;
 ```
@@ -95,24 +94,10 @@ python manage.py migrate
 python manage.py createsuperuser
 ```
 
-> **Important:** `AUTH_USER_MODEL = 'news.CustomUser'` must be set **before the first `migrate`**. If you migrated without it, drop the database, delete `news/migrations/*.py` (keep `__init__.py`), and start over.
-
-### SQLite (quick local alternative)
-
-```bash
-export USE_SQLITE=1               # PowerShell: $env:USE_SQLITE=1
-python manage.py migrate
-```
-
-Everything else behaves the same. Use MariaDB for your final run and for marking.
-
----
-
 ## Demo data and accounts
 
 ```bash
 python manage.py seed_demo            # safe to re-run
-python manage.py seed_demo --reset    # wipe demo entities first, then re-create
 ```
 
 The seed creates 3 publishers, 6 articles (2 left pending for review), 2 newsletters and 6 users. All demo passwords are **`Mzanzi2026!`**.
@@ -321,7 +306,7 @@ Everything is wrapped in `try/except`, so a mail outage or dead webhook never bl
 
 **The webhook.** `POST /api/approved/` is called by the server itself. It rejects any request without the matching `X-Internal-Token` and writes the payload to `approved_articles.log`.
 
-**In production**, move the email and webhook work to a background worker (for example Celery with Redis). The signal stays the same and only enqueues a task.
+**In production**, move the email and webhook work to a background worker. The signal stays the same and only enqueues a task.
 
 ---
 
@@ -333,11 +318,6 @@ Authentication is token based. Send the token in a header:
 Authorization: Token <your-token>
 ```
 
-```bash
-curl -X POST http://127.0.0.1:8000/api/token/ \
-     -d "username=manzezulu&password=Mzanzi2026!"
-# {"token": "9944b09199c62bcf9418ad846dd0e4bbdfc6ee4b"}
-```
 
 | Method | Endpoint | Who | Purpose |
 |---|---|---|---|
@@ -389,6 +369,7 @@ The suite covers:
 - **Web access:** anonymous users are redirected, readers cannot open the review queue, editors can approve.
 
 All email and HTTP calls are mocked, so tests are fast and never touch the network.
+In case you want to push production you can always use the production configurations.
 
 ---
 
@@ -515,4 +496,4 @@ Uncomment each line after adding the matching image file:
 
 ## License
 
-Built as a HyperionDev capstone. Free to use, modify and redistribute; attribution appreciated.
+For learning purposes
