@@ -22,18 +22,18 @@ class NewsTestBase(APITestCase):
         make = User.objects.create_user
         cls.publisher = Publisher.objects.create(name='Daily Planet')
         cls.journalist = make(
-            'jane', 'jane@example.com', PASSWORD, role='journalist'
+            'manzezulu', 'manzezulu@example.com', PASSWORD, role='journalist'
         )
         cls.other_journalist = make(
-            'omar', 'omar@example.com', PASSWORD, role='journalist'
+            'kwenza', 'kwenza@example.com', PASSWORD, role='journalist'
         )
         cls.stranger = make(
-            'sam', 'sam@example.com', PASSWORD, role='journalist'
+            'samkelo', 'samkelo@example.com', PASSWORD, role='journalist'
         )
         cls.editor = make('edna', 'edna@example.com', PASSWORD, role='editor')
         cls.reader = make('rita', 'rita@example.com', PASSWORD, role='reader')
         cls.other_reader = make(
-            'rob', 'rob@example.com', PASSWORD, role='reader'
+            'banana', 'banana@example.com', PASSWORD, role='reader'
         )
 
         cls.publisher.journalists.add(cls.journalist)
@@ -284,7 +284,7 @@ class ApprovalSignalTests(NewsTestBase):
     ):
         self.approve(
             self.pending_article
-        )  # jane @ Daily Planet; rita subscribes
+        )  # manzezulu @ Daily Planet; rita subscribes
 
         recipients = [msg[3][0] for msg in mock_mail.call_args[0][0]]
         self.assertEqual(recipients, ['rita@example.com'])

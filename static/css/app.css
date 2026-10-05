@@ -172,7 +172,7 @@ h1, h2, h3 { scroll-margin-top: 90px; }
   font-variant-numeric: tabular-nums;
 }
 
-/* ---------- Feature (hero) article ---------- */
+/* ---------- Feature article ---------- */
 .feature-article {
   position: relative;
   border-radius: var(--radius-card);
