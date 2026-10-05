@@ -494,6 +494,12 @@ Uncomment each line after adding the matching image file:
 
 ---
 
-## License
+## Author
 
-For learning purposes
+**Manzezulu Mazibuko**
+
+GitHub:  
+https://github.com/manzezulu
+
+LinkedIn:  
+https://www.linkedin.com/in/manzezulu-mazibuko-b62a26177/
