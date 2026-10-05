@@ -302,7 +302,7 @@ When an editor approves an article:
 
 Everything is wrapped in `try/except`, so a mail outage or dead webhook never blocks the editor.
 
-**Why the `notified` flag?** `post_save` fires on every save. Without the flag, editing an approved article would email every subscriber again.
+**We use the `notified` flag** :`post_save` to fire on every save. Without the flag, editing an approved article would email every subscriber again.
 
 **The webhook.** `POST /api/approved/` is called by the server itself. It rejects any request without the matching `X-Internal-Token` and writes the payload to `approved_articles.log`.
 
