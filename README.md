@@ -28,7 +28,6 @@ When an editor approves an article, every subscriber is emailed and the article 
 12. [Configuration](#configuration)
 13. [Project structure](#project-structure)
 14. [Screenshots](#screenshots)
-15. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -448,45 +447,6 @@ Screenshots live in `docs/screenshots/`.
 ![Subscriptions](docs/screenshots/subscriptions.png)
 ![Tests passing](docs/screenshots/tests-passing.png)
 
-
----
-
-## Troubleshooting
-
-<details>
-<summary><strong>Migration and database problems</strong></summary>
-
-| Problem | Fix |
-|---|---|
-| `InconsistentMigrationHistory` mentioning `admin` | You migrated before `AUTH_USER_MODEL` was set. Drop the database, delete `news/migrations/*.py` (keep `__init__.py`), then run `makemigrations` and `migrate`. |
-| `mysqlclient` fails to install | On Linux install `libmariadb-dev pkg-config build-essential`. Fallback: `pip install pymysql` and add `import pymysql; pymysql.install_as_MySQLdb()` to `news_project/__init__.py`. |
-| `Access denied` when running tests | Grant privileges on `test_news_db` (see Database setup). |
-| `no such table` in tests | Models and migrations disagree. Run `python manage.py makemigrations --check --dry-run`, then `makemigrations`. |
-</details>
-
-<details>
-<summary><strong>Running the site</strong></summary>
-
-| Problem | Fix |
-|---|---|
-| `TemplateDoesNotExist: registration/login.html` | The `templates/` folder is missing, or `TEMPLATES['DIRS']` does not point at `BASE_DIR / 'templates'`. |
-| Site loads with no styling | Check `DEBUG=1`, `django.contrib.staticfiles` in `INSTALLED_APPS`, and that `/static/css/app.css` loads. Hard-refresh with `Ctrl+Shift+R`. |
-| Warning about `STATIC_ROOT` or `STATICFILES_DIRS` | Add `STATIC_ROOT = BASE_DIR / 'staticfiles'` and `STATICFILES_DIRS = [BASE_DIR / 'static']`, and create `static/css/`. |
-| Log out returns 405 | Django requires POST for logout; use a form with `{% csrf_token %}`. |
-</details>
-
-<details>
-<summary><strong>Approvals and API</strong></summary>
-
-| Problem | Fix |
-|---|---|
-| Approving in Django admin sends nothing | `queryset.update()` bypasses signals. Use the admin action that loops and calls `save()`. |
-| Emails print but no log line | `runserver` must be running (the signal posts back to itself) and `INTERNAL_API_TOKEN` must match. |
-| `/api/articles/subscribed/` returns 404 | In `api_urls.py`, `subscribed/` must come before `<int:pk>/`. |
-| A journalist's subscription fields are empty | By design: non-readers' subscriptions are cleared on every save. |
-</details>
-
----
 
 ## Author
 
