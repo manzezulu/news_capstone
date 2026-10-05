@@ -1,4 +1,4 @@
-sequenceDiagram
+    sequenceDiagram
     autonumber
     actor J as Journalist
     actor E as Editor
