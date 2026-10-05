@@ -58,7 +58,7 @@ python -m venv venv
 source venv/bin/activate          # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
-# Create the MariaDB database first (see Database setup), then:
+# Create the MariaDB database first (see Database setup), then: 
 python manage.py makemigrations
 python manage.py migrate
 python manage.py seed_demo     # pre builtdata for testing
@@ -67,7 +67,7 @@ python manage.py runserver
 
 Open <http://127.0.0.1:8000/> and log in with one of the [demo accounts](#demo-accounts).
 
-**Requirements:** Python 3.11+, MariaDB 10.6+ (or MySQL 8). On Linux, building `mysqlclient` needs `libmariadb-dev pkg-config build-essential`. Bootstrap loads from a CDN, so there is no Node or build step.
+**Requirements:** Python 3.11+, MariaDB 10.6+. Bootstrap loads from a CDN, so there is no Node or build step.
 
 | URL | Purpose |
 |---|---|
@@ -79,7 +79,7 @@ Open <http://127.0.0.1:8000/> and log in with one of the [demo accounts](#demo-a
 
 ## Database setup
 
-### MariaDB (required by the brief)
+### MariaDB
 
 ```sql
 CREATE DATABASE news_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
