@@ -94,7 +94,7 @@ else:
             'USER': os.environ.get('DB_USER', 'news_user'),
             'PASSWORD': os.environ.get('DB_PASSWORD', 'ChangeMe123!'),
             'HOST': os.environ.get('DB_HOST', '127.0.0.1'),
-            'PORT': os.environ.get('DB_PORT', '3307'),
+            'PORT': os.environ.get('DB_PORT', '3306'),
             'OPTIONS': {'charset': 'utf8mb4'},
         }
     }
@@ -139,10 +139,6 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
 
-
-# Email
-# https://docs.djangoproject.com/en/5.2/topics/email/#topic-email-configuration
-
 AUTH_USER_MODEL = 'news.CustomUser'
 
 MESSAGE_TAGS = {message_constants.ERROR: 'danger'}
@@ -152,11 +148,26 @@ LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'article-list'
 LOGOUT_REDIRECT_URL = 'login'
 
-# Email: prints to the terminal in development
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-DEFAULT_FROM_EMAIL = 'news@example.com'
+# --- Email ---------------------------------------------------------------
+# For Practical purposesnemails are printed to the console so you can see the
+# invoice and password-reset links without a mail server. Running the
+# server and performing a checkout will print the invoice there.
 
-# Approval integration (section 8)
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+DEFAULT_FROM_EMAIL = "no-reply@starbridge-market.local"
+
+# --- Email (production) --------------------------------------------------
+# Uncomment and fill in to send real emails.
+#
+# EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+# EMAIL_HOST = "smtp.gmail.com"
+# EMAIL_PORT = 587
+# EMAIL_USE_TLS = True
+# EMAIL_HOST_USER = "yourcompanyaddress@gmail.com"
+# EMAIL_HOST_PASSWORD = "ecommercepassword"
+# DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+# Approval integration
 APPROVED_API_URL = os.environ.get(
     'APPROVED_API_URL', 'http://127.0.0.1:8000/api/approved/'
 )
