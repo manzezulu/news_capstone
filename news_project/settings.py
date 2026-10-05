@@ -154,7 +154,7 @@ LOGOUT_REDIRECT_URL = 'login'
 # server and performing a checkout will print the invoice there.
 
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-DEFAULT_FROM_EMAIL = "no-reply@starbridge-market.local"
+DEFAULT_FROM_EMAIL = "no-reply@Malizahloso@news.com"
 
 # --- Email (production) --------------------------------------------------
 # Uncomment and fill in to send real emails.
