@@ -443,17 +443,11 @@ news_capstone/
 
 Screenshots live in `docs/screenshots/`.
 
-<!--
-Uncomment each line after adding the matching image file:
-
 ![Login](docs/screenshots/login.png)
-![Article list](docs/screenshots/article-list.png)
-![Editor review queue](docs/screenshots/review-queue.png)
+![Article list](docs/screenshots/articles.png)
 ![Subscriptions](docs/screenshots/subscriptions.png)
-![Postman: success](docs/screenshots/postman-success.png)
-![Postman: forbidden](docs/screenshots/postman-403.png)
 ![Tests passing](docs/screenshots/tests-passing.png)
--->
+
 
 ---
 
