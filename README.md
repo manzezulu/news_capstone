@@ -6,7 +6,7 @@
 ![MariaDB](https://img.shields.io/badge/MariaDB-10.6%2B-003545?logo=mariadb&logoColor=white)
 ![Tests](https://img.shields.io/badge/tests-31%20passing-brightgreen)
 
-A Django news platform where journalists publish stories, editors approve them, and readers follow the people and publications they trust. Built as the HyperionDev / Stellenbosch University capstone.
+A Django news platform where journalists publish stories, editors approve them, and readers follow the people and publications they trust. Built as the HyperionDev Partnering with Stellenbosch University capstone project.
 
 When an editor approves an article, every subscriber is emailed and the article is posted to the project's own REST endpoint. This happens exactly once, and a failed email or webhook never blocks the approval.
 
