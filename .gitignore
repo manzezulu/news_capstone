@@ -4,3 +4,5 @@ __pycache__/
 *.log
 .env
 db.sqlite3
+staticfiles/
+approved_articles.log/
