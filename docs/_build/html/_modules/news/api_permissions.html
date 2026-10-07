@@ -1,0 +1,212 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>news.api_permissions &mdash; Daily Dispatch 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Daily Dispatch
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">news</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Daily Dispatch</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">news.api_permissions</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for news.api_permissions</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Role-based DRF permissions built on Django group permissions."""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">rest_framework.permissions</span><span class="w"> </span><span class="kn">import</span> <span class="n">SAFE_METHODS</span><span class="p">,</span> <span class="n">BasePermission</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">CustomUser</span>
+
+
+<div class="viewcode-block" id="RolePermission">
+<a class="viewcode-back" href="../../news.html#news.api_permissions.RolePermission">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">RolePermission</span><span class="p">(</span><span class="n">BasePermission</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Authorise API requests by role.</span>
+
+<span class="sd">    Maps each HTTP method to the matching Django model permission</span>
+<span class="sd">    (view, add, change or delete) and allows the request only if the</span>
+<span class="sd">    user's group holds that permission.</span>
+<span class="sd">    """</span>
+
+    <span class="n">method_actions</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">'GET'</span><span class="p">:</span> <span class="s1">'view'</span><span class="p">,</span>
+        <span class="s1">'HEAD'</span><span class="p">:</span> <span class="s1">'view'</span><span class="p">,</span>
+        <span class="s1">'OPTIONS'</span><span class="p">:</span> <span class="s1">'view'</span><span class="p">,</span>
+        <span class="s1">'POST'</span><span class="p">:</span> <span class="s1">'add'</span><span class="p">,</span>
+        <span class="s1">'PUT'</span><span class="p">:</span> <span class="s1">'change'</span><span class="p">,</span>
+        <span class="s1">'PATCH'</span><span class="p">:</span> <span class="s1">'change'</span><span class="p">,</span>
+        <span class="s1">'DELETE'</span><span class="p">:</span> <span class="s1">'delete'</span><span class="p">,</span>
+    <span class="p">}</span>
+
+<div class="viewcode-block" id="RolePermission.has_permission">
+<a class="viewcode-back" href="../../news.html#news.api_permissions.RolePermission.has_permission">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">has_permission</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">view</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Check whether the user may use this endpoint at all.</span>
+
+<span class="sd">        Anonymous users are always refused. For logged-in users the</span>
+<span class="sd">        HTTP method is looked up in ``method_actions`` and the matching</span>
+<span class="sd">        Django model permission (for example ``news.add_article``) is</span>
+<span class="sd">        required. Methods that are not in ``method_actions`` are denied.</span>
+
+<span class="sd">        :param request: The incoming API request</span>
+<span class="sd">        :type request: rest_framework.request.Request</span>
+<span class="sd">        :param view: The view handling the request; it must define</span>
+<span class="sd">            ``model_name`` (for example ``"article"``)</span>
+<span class="sd">        :type view: rest_framework.views.APIView</span>
+<span class="sd">        :returns: ``True`` if the user is authenticated and holds the</span>
+<span class="sd">            permission for this method, ``False`` otherwise</span>
+<span class="sd">        :rtype: bool</span>
+<span class="sd">        """</span>
+        <span class="n">user</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">user</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">user</span> <span class="ow">and</span> <span class="n">user</span><span class="o">.</span><span class="n">is_authenticated</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="n">action</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">method_actions</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">method</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">action</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">user</span><span class="o">.</span><span class="n">has_perm</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s1">'news.</span><span class="si">{</span><span class="n">action</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">view</span><span class="o">.</span><span class="n">model_name</span><span class="si">}</span><span class="s1">'</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="RolePermission.has_object_permission">
+<a class="viewcode-back" href="../../news.html#news.api_permissions.RolePermission.has_object_permission">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">has_object_permission</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">view</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Check whether the user may act on one specific object.</span>
+
+<span class="sd">        Safe (read-only) methods are always allowed. For anything that</span>
+<span class="sd">        changes data, editors may modify any object, while other users</span>
+<span class="sd">        may modify only objects they authored.</span>
+
+<span class="sd">        :param request: The incoming API request</span>
+<span class="sd">        :type request: rest_framework.request.Request</span>
+<span class="sd">        :param view: The view handling the request</span>
+<span class="sd">        :type view: rest_framework.views.APIView</span>
+<span class="sd">        :param obj: The object being accessed; it must have an</span>
+<span class="sd">            ``author_id`` attribute</span>
+<span class="sd">        :type obj: django.db.models.Model</span>
+<span class="sd">        :returns: ``True`` if the request is read-only, the user is an</span>
+<span class="sd">            editor, or the user is the object's author; ``False``</span>
+<span class="sd">            otherwise</span>
+<span class="sd">        :rtype: bool</span>
+<span class="sd">        """</span>
+        <span class="k">if</span> <span class="n">request</span><span class="o">.</span><span class="n">method</span> <span class="ow">in</span> <span class="n">SAFE_METHODS</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="n">user</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">user</span>
+        <span class="c1"># Editors can modify anything; journalists only their own work</span>
+        <span class="k">return</span> <span class="n">user</span><span class="o">.</span><span class="n">role</span> <span class="o">==</span> <span class="n">CustomUser</span><span class="o">.</span><span class="n">Role</span><span class="o">.</span><span class="n">EDITOR</span> <span class="ow">or</span> <span class="n">obj</span><span class="o">.</span><span class="n">author_id</span> <span class="o">==</span> <span class="n">user</span><span class="o">.</span><span class="n">id</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="IsReader">
+<a class="viewcode-back" href="../../news.html#news.api_permissions.IsReader">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">IsReader</span><span class="p">(</span><span class="n">BasePermission</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Only users with the Reader role."""</span>
+
+<div class="viewcode-block" id="IsReader.has_permission">
+<a class="viewcode-back" href="../../news.html#news.api_permissions.IsReader.has_permission">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">has_permission</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">view</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Allow access only to authenticated users with the Reader role.</span>
+
+<span class="sd">        :param request: The incoming API request</span>
+<span class="sd">        :type request: rest_framework.request.Request</span>
+<span class="sd">        :param view: The view handling the request</span>
+<span class="sd">        :type view: rest_framework.views.APIView</span>
+<span class="sd">        :returns: ``True`` if the user is logged in and their role is</span>
+<span class="sd">            Reader, ``False`` otherwise</span>
+<span class="sd">        :rtype: bool</span>
+<span class="sd">        """</span>
+        <span class="n">user</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">user</span>
+        <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span>
+            <span class="n">user</span>
+            <span class="ow">and</span> <span class="n">user</span><span class="o">.</span><span class="n">is_authenticated</span>
+            <span class="ow">and</span> <span class="n">user</span><span class="o">.</span><span class="n">role</span> <span class="o">==</span> <span class="n">CustomUser</span><span class="o">.</span><span class="n">Role</span><span class="o">.</span><span class="n">READER</span>
+        <span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Manzezulu Mazibuko.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

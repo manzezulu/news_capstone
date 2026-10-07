@@ -1,0 +1,326 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>news.signals &mdash; Daily Dispatch 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Daily Dispatch
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">news</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Daily Dispatch</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">news.signals</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for news.signals</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Signal handlers for the news app.</span>
+
+<span class="sd">Keeps each user's permission group in step with their role, and</span>
+<span class="sd">notifies subscribers (by email and by webhook) when an editor approves</span>
+<span class="sd">an article.</span>
+<span class="sd">"""</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">smtplib</span><span class="w"> </span><span class="kn">import</span> <span class="n">SMTPException</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">requests</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">django.conf</span><span class="w"> </span><span class="kn">import</span> <span class="n">settings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">django.contrib.auth.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Group</span><span class="p">,</span> <span class="n">Permission</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">django.core.mail</span><span class="w"> </span><span class="kn">import</span> <span class="n">send_mass_mail</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">django.db.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Q</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">django.db.models.signals</span><span class="w"> </span><span class="kn">import</span> <span class="n">post_save</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">django.dispatch</span><span class="w"> </span><span class="kn">import</span> <span class="n">receiver</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Article</span><span class="p">,</span> <span class="n">CustomUser</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<span class="c1"># Group name -&gt; permission codenames (matches the brief's role table)</span>
+<span class="n">ROLE_PERMISSIONS</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">'Reader'</span><span class="p">:</span> <span class="p">[</span><span class="s1">'view_article'</span><span class="p">,</span> <span class="s1">'view_newsletter'</span><span class="p">],</span>
+    <span class="s1">'Editor'</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s1">'view_article'</span><span class="p">,</span>
+        <span class="s1">'change_article'</span><span class="p">,</span>
+        <span class="s1">'delete_article'</span><span class="p">,</span>
+        <span class="s1">'approve_article'</span><span class="p">,</span>
+        <span class="s1">'view_newsletter'</span><span class="p">,</span>
+        <span class="s1">'change_newsletter'</span><span class="p">,</span>
+        <span class="s1">'delete_newsletter'</span><span class="p">,</span>
+    <span class="p">],</span>
+    <span class="s1">'Journalist'</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s1">'add_article'</span><span class="p">,</span>
+        <span class="s1">'view_article'</span><span class="p">,</span>
+        <span class="s1">'change_article'</span><span class="p">,</span>
+        <span class="s1">'delete_article'</span><span class="p">,</span>
+        <span class="s1">'add_newsletter'</span><span class="p">,</span>
+        <span class="s1">'view_newsletter'</span><span class="p">,</span>
+        <span class="s1">'change_newsletter'</span><span class="p">,</span>
+        <span class="s1">'delete_newsletter'</span><span class="p">,</span>
+    <span class="p">],</span>
+<span class="p">}</span>
+
+
+<div class="viewcode-block" id="create_role_groups">
+<a class="viewcode-back" href="../../news.html#news.signals.create_role_groups">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">create_role_groups</span><span class="p">(</span><span class="n">sender</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Create the role groups and (re)assign their permissions.</span>
+
+<span class="sd">    Connected to the ``post_migrate`` signal, so the groups exist after</span>
+<span class="sd">    every ``migrate``. Permissions are replaced, not added to, so the</span>
+<span class="sd">    groups always match ``ROLE_PERMISSIONS``. Codenames that do not</span>
+<span class="sd">    exist are ignored.</span>
+
+<span class="sd">    :param sender: The app config that has just been migrated</span>
+<span class="sd">    :type sender: django.apps.AppConfig</span>
+<span class="sd">    :param kwargs: Other signal arguments (not used)</span>
+<span class="sd">    :returns: Nothing</span>
+<span class="sd">    :rtype: None</span>
+<span class="sd">    """</span>
+    <span class="k">for</span> <span class="n">group_name</span><span class="p">,</span> <span class="n">codenames</span> <span class="ow">in</span> <span class="n">ROLE_PERMISSIONS</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">group</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">Group</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">get_or_create</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">group_name</span><span class="p">)</span>
+        <span class="n">permissions</span> <span class="o">=</span> <span class="n">Permission</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span>
+            <span class="n">content_type__app_label</span><span class="o">=</span><span class="s1">'news'</span><span class="p">,</span> <span class="n">codename__in</span><span class="o">=</span><span class="n">codenames</span>
+        <span class="p">)</span>
+        <span class="n">group</span><span class="o">.</span><span class="n">permissions</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">permissions</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="sync_role_group">
+<a class="viewcode-back" href="../../news.html#news.signals.sync_role_group">[docs]</a>
+<span class="nd">@receiver</span><span class="p">(</span><span class="n">post_save</span><span class="p">,</span> <span class="n">sender</span><span class="o">=</span><span class="n">CustomUser</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">sync_role_group</span><span class="p">(</span><span class="n">sender</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">raw</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Keep the user's group in step with their role.</span>
+
+<span class="sd">    Removes the user from every role group, then adds the group whose</span>
+<span class="sd">    name matches the user's current role. Groups that are not role</span>
+<span class="sd">    groups are left alone. Skipped when fixtures are loaded.</span>
+
+<span class="sd">    :param sender: The model class that sent the signal</span>
+<span class="sd">    :type sender: type</span>
+<span class="sd">    :param instance: The user that was saved</span>
+<span class="sd">    :type instance: news.models.CustomUser</span>
+<span class="sd">    :param raw: ``True`` when the save comes from ``loaddata``,</span>
+<span class="sd">        defaults to False</span>
+<span class="sd">    :type raw: bool, optional</span>
+<span class="sd">    :param kwargs: Other signal arguments (not used)</span>
+<span class="sd">    :returns: Nothing</span>
+<span class="sd">    :rtype: None</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">raw</span><span class="p">:</span>  <span class="c1"># loaddata: skip</span>
+        <span class="k">return</span>
+    <span class="n">instance</span><span class="o">.</span><span class="n">groups</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="o">*</span><span class="n">Group</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">name__in</span><span class="o">=</span><span class="n">ROLE_PERMISSIONS</span><span class="p">))</span>
+    <span class="n">group</span> <span class="o">=</span> <span class="n">Group</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">instance</span><span class="o">.</span><span class="n">get_role_display</span><span class="p">())</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">group</span><span class="p">:</span>
+        <span class="n">instance</span><span class="o">.</span><span class="n">groups</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">group</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="get_subscriber_emails">
+<a class="viewcode-back" href="../../news.html#news.signals.get_subscriber_emails">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_subscriber_emails</span><span class="p">(</span><span class="n">article</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Emails of readers subscribed to the article's author or publisher.</span>
+
+<span class="sd">    Only users with the Reader role and a non-empty email address are</span>
+<span class="sd">    included. Each address appears once, even if the reader follows</span>
+<span class="sd">    both the author and the publisher.</span>
+
+<span class="sd">    :param article: The article being announced</span>
+<span class="sd">    :type article: news.models.Article</span>
+<span class="sd">    :returns: The distinct subscriber email addresses</span>
+<span class="sd">    :rtype: list</span>
+<span class="sd">    """</span>
+    <span class="n">condition</span> <span class="o">=</span> <span class="n">Q</span><span class="p">(</span><span class="n">subscribed_journalists</span><span class="o">=</span><span class="n">article</span><span class="o">.</span><span class="n">author</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">article</span><span class="o">.</span><span class="n">publisher_id</span><span class="p">:</span>
+        <span class="n">condition</span> <span class="o">|=</span> <span class="n">Q</span><span class="p">(</span><span class="n">subscribed_publishers</span><span class="o">=</span><span class="n">article</span><span class="o">.</span><span class="n">publisher</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">list</span><span class="p">(</span>
+        <span class="n">CustomUser</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">condition</span><span class="p">,</span> <span class="n">role</span><span class="o">=</span><span class="n">CustomUser</span><span class="o">.</span><span class="n">Role</span><span class="o">.</span><span class="n">READER</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">exclude</span><span class="p">(</span><span class="n">email</span><span class="o">=</span><span class="s1">''</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">values_list</span><span class="p">(</span><span class="s1">'email'</span><span class="p">,</span> <span class="n">flat</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">distinct</span><span class="p">()</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="email_subscribers">
+<a class="viewcode-back" href="../../news.html#news.signals.email_subscribers">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">email_subscribers</span><span class="p">(</span><span class="n">article</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Send the approved article to each subscriber (one email each).</span>
+
+<span class="sd">    Mail errors (``SMTPException`` or ``OSError``) are logged and</span>
+<span class="sd">    swallowed, so a mail outage never blocks the approval.</span>
+
+<span class="sd">    :param article: The approved article</span>
+<span class="sd">    :type article: news.models.Article</span>
+<span class="sd">    :returns: The number of emails sent, or 0 if there were no</span>
+<span class="sd">        recipients or sending failed</span>
+<span class="sd">    :rtype: int</span>
+<span class="sd">    """</span>
+    <span class="n">recipients</span> <span class="o">=</span> <span class="n">get_subscriber_emails</span><span class="p">(</span><span class="n">article</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">recipients</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">0</span>
+    <span class="n">subject</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">'New article: </span><span class="si">{</span><span class="n">article</span><span class="o">.</span><span class="n">title</span><span class="si">}</span><span class="s1">'</span>
+    <span class="n">body</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">'By </span><span class="si">{</span><span class="n">article</span><span class="o">.</span><span class="n">author</span><span class="o">.</span><span class="n">username</span><span class="si">}</span><span class="se">\n\n</span><span class="si">{</span><span class="n">article</span><span class="o">.</span><span class="n">content</span><span class="si">}</span><span class="s1">'</span>
+    <span class="n">messages</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span>
+        <span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">body</span><span class="p">,</span> <span class="n">settings</span><span class="o">.</span><span class="n">DEFAULT_FROM_EMAIL</span><span class="p">,</span> <span class="p">[</span><span class="n">email</span><span class="p">])</span>
+        <span class="k">for</span> <span class="n">email</span> <span class="ow">in</span> <span class="n">recipients</span>
+    <span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">send_mass_mail</span><span class="p">(</span><span class="n">messages</span><span class="p">,</span> <span class="n">fail_silently</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="n">SMTPException</span><span class="p">,</span> <span class="ne">OSError</span><span class="p">)</span> <span class="k">as</span> <span class="n">error</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">'Could not email article </span><span class="si">%s</span><span class="s1">: </span><span class="si">%s</span><span class="s1">'</span><span class="p">,</span> <span class="n">article</span><span class="o">.</span><span class="n">pk</span><span class="p">,</span> <span class="n">error</span><span class="p">)</span>
+        <span class="k">return</span> <span class="mi">0</span></div>
+
+
+
+<div class="viewcode-block" id="post_to_approved_api">
+<a class="viewcode-back" href="../../news.html#news.signals.post_to_approved_api">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">post_to_approved_api</span><span class="p">(</span><span class="n">article</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""POST the approved article to our own /api/approved/ endpoint.</span>
+
+<span class="sd">    Sends the article id, title, content, author username and</span>
+<span class="sd">    publisher name (or ``None``) as JSON to ``APPROVED_API_URL``,</span>
+<span class="sd">    authenticated with the ``X-Internal-Token`` header. The request</span>
+<span class="sd">    times out after 5 seconds. Any request failure, including an HTTP</span>
+<span class="sd">    error status, is logged as a warning and not raised.</span>
+
+<span class="sd">    :param article: The approved article</span>
+<span class="sd">    :type article: news.models.Article</span>
+<span class="sd">    :returns: Nothing</span>
+<span class="sd">    :rtype: None</span>
+<span class="sd">    """</span>
+    <span class="n">payload</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">'id'</span><span class="p">:</span> <span class="n">article</span><span class="o">.</span><span class="n">pk</span><span class="p">,</span>
+        <span class="s1">'title'</span><span class="p">:</span> <span class="n">article</span><span class="o">.</span><span class="n">title</span><span class="p">,</span>
+        <span class="s1">'content'</span><span class="p">:</span> <span class="n">article</span><span class="o">.</span><span class="n">content</span><span class="p">,</span>
+        <span class="s1">'author'</span><span class="p">:</span> <span class="n">article</span><span class="o">.</span><span class="n">author</span><span class="o">.</span><span class="n">username</span><span class="p">,</span>
+        <span class="s1">'publisher'</span><span class="p">:</span> <span class="n">article</span><span class="o">.</span><span class="n">publisher</span><span class="o">.</span><span class="n">name</span> <span class="k">if</span> <span class="n">article</span><span class="o">.</span><span class="n">publisher</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+            <span class="n">settings</span><span class="o">.</span><span class="n">APPROVED_API_URL</span><span class="p">,</span>
+            <span class="n">json</span><span class="o">=</span><span class="n">payload</span><span class="p">,</span>
+            <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s1">'X-Internal-Token'</span><span class="p">:</span> <span class="n">settings</span><span class="o">.</span><span class="n">INTERNAL_API_TOKEN</span><span class="p">},</span>
+            <span class="n">timeout</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="k">except</span> <span class="n">requests</span><span class="o">.</span><span class="n">RequestException</span> <span class="k">as</span> <span class="n">error</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">'Approved-article POST failed: </span><span class="si">%s</span><span class="s1">'</span><span class="p">,</span> <span class="n">error</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="handle_article_approval">
+<a class="viewcode-back" href="../../news.html#news.signals.handle_article_approval">[docs]</a>
+<span class="nd">@receiver</span><span class="p">(</span><span class="n">post_save</span><span class="p">,</span> <span class="n">sender</span><span class="o">=</span><span class="n">Article</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">handle_article_approval</span><span class="p">(</span><span class="n">sender</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">raw</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""When an article becomes approved, notify subscribers exactly once.</span>
+
+<span class="sd">    Does nothing for fixture loads, unapproved articles, or articles</span>
+<span class="sd">    that were already notified. Otherwise it emails the subscribers,</span>
+<span class="sd">    posts to the approved-articles endpoint, and sets ``notified`` to</span>
+<span class="sd">    ``True`` so later saves do not notify again.</span>
+
+<span class="sd">    :param sender: The model class that sent the signal</span>
+<span class="sd">    :type sender: type</span>
+<span class="sd">    :param instance: The article that was saved</span>
+<span class="sd">    :type instance: news.models.Article</span>
+<span class="sd">    :param raw: ``True`` when the save comes from ``loaddata``,</span>
+<span class="sd">        defaults to False</span>
+<span class="sd">    :type raw: bool, optional</span>
+<span class="sd">    :param kwargs: Other signal arguments (not used)</span>
+<span class="sd">    :returns: Nothing</span>
+<span class="sd">    :rtype: None</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">raw</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">instance</span><span class="o">.</span><span class="n">approved</span> <span class="ow">or</span> <span class="n">instance</span><span class="o">.</span><span class="n">notified</span><span class="p">:</span>
+        <span class="k">return</span>
+    <span class="n">email_subscribers</span><span class="p">(</span><span class="n">instance</span><span class="p">)</span>
+    <span class="n">post_to_approved_api</span><span class="p">(</span><span class="n">instance</span><span class="p">)</span>
+    <span class="c1"># update() (not save()) so we do not re-trigger this same signal</span>
+    <span class="n">Article</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">pk</span><span class="o">=</span><span class="n">instance</span><span class="o">.</span><span class="n">pk</span><span class="p">)</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">notified</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">instance</span><span class="o">.</span><span class="n">notified</span> <span class="o">=</span> <span class="kc">True</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Manzezulu Mazibuko.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
