@@ -4,6 +4,7 @@
 ![Django](https://img.shields.io/badge/Django-5.2%20%7C%206.1-092E20?logo=django&logoColor=white)
 ![DRF](https://img.shields.io/badge/REST-DRF%20token%20auth-A30000)
 ![MariaDB](https://img.shields.io/badge/MariaDB-10.6%2B-003545?logo=mariadb&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)
 ![Tests](https://img.shields.io/badge/tests-31%20passing-brightgreen)
 
 A Django news platform where journalists publish stories, editors approve them, and readers follow the people and publications they trust. Built as the HyperionDev Partnering with Stellenbosch University capstone project.
@@ -17,17 +18,21 @@ When an editor approves an article, every subscriber is emailed and the article 
 1. [Features](#features)
 2. [Quick start](#quick-start)
 3. [Database setup](#database-setup)
-4. [Demo data and accounts](#demo-data-and-accounts)
-5. [Using the site](#using-the-site)
-6. [Requirements analysis](#requirements-analysis)
-7. [Design](#design)
-8. [Roles and permissions](#roles-and-permissions)
-9. [Approval workflow](#approval-workflow)
-10. [REST API](#rest-api)
-11. [Testing and code style](#testing-and-code-style)
-12. [Configuration](#configuration)
-13. [Project structure](#project-structure)
-14. [Screenshots](#screenshots)
+4. [Run with Docker](#run-with-docker)
+5. [Demo data and accounts](#demo-data-and-accounts)
+6. [Using the site](#using-the-site)
+7. [Requirements analysis](#requirements-analysis)
+8. [Design](#design)
+9. [Roles and permissions](#roles-and-permissions)
+10. [Approval workflow](#approval-workflow)
+11. [REST API](#rest-api)
+12. [Testing and code style](#testing-and-code-style)
+13. [Documentation (Sphinx)](#documentation-sphinx)
+14. [Configuration](#configuration)
+15. [Git workflow](#git-workflow)
+16. [Project structure](#project-structure)
+17. [Troubleshooting](#troubleshooting)
+18. [Screenshots](#screenshots)
 
 ---
 
@@ -44,10 +49,16 @@ When an editor approves an article, every subscriber is emailed and the article 
 - REST API with token authentication and role-based authorisation.
 - 31 automated unit tests, with email and HTTP calls mocked.
 - MariaDB database, normalised to 3NF.
+- Docker support (Docker Compose with MariaDB, or a single SQLite container).
+- Sphinx documentation generated from docstrings.
 
 ---
 
 ## Quick start
+
+There are two ways to run the project: with a virtual environment (below) or with [Docker](#run-with-docker).
+
+**Requirements:** Python 3.11+ and MariaDB 10.6+. Bootstrap loads from a CDN, so there is no Node or build step.
 
 ```bash
 git clone https://github.com/manzezulu/news_capstone.git
@@ -60,32 +71,22 @@ pip install -r requirements.txt
 # Create the MariaDB database first (see Database setup), then:
 python manage.py makemigrations
 python manage.py migrate
-python manage.py seed_demo     # load demo data
+python manage.py seed_demo        # load demo data
 python manage.py runserver
 ```
 
-## Run with Docker
-Requires Docker Desktop (or Docker Engine with Compose).
-1. Copy the example settings: cp .env.example .env
-2. Edit .env and set your own DJANGO_SECRET_KEY, DB_PASSWORD
- and INTERNAL_API_TOKEN. Never commit .env.
-3. Start everything: docker compose up --build
-4. Load demo data: docker compose exec web python manage.py seed_demo (on a new terminal)
-5. Open http://127.0.0.1:8000/
-
-## Rebuild the documentation
-pip install -r requirements-docs.txt
-cd docs && make html
-Open docs/_build/html/index.html
 Open <http://127.0.0.1:8000/> and log in with one of the [demo accounts](#demo-accounts).
 
-**Requirements:** Python 3.11+, MariaDB 10.6+. Bootstrap loads from a CDN, so there is no Node or build step.
+> **No MariaDB installed?** Set `USE_SQLITE=1` before running the commands above to use SQLite instead:
+> PowerShell `$env:USE_SQLITE = "1"`, macOS/Linux `export USE_SQLITE=1`.
 
 | URL | Purpose |
 |---|---|
 | <http://127.0.0.1:8000/> | The site |
 | <http://127.0.0.1:8000/admin/> | Django admin |
 | <http://127.0.0.1:8000/api/> | REST API |
+
+> **Local runs read real environment variables, not `.env`.** To change a setting such as `DB_PASSWORD` or `DB_PORT` when running with `python manage.py`, set it in your terminal (see [Configuration](#configuration)). The `.env` file is used by Docker Compose.
 
 ---
 
@@ -106,13 +107,102 @@ python manage.py migrate
 python manage.py createsuperuser
 ```
 
+The second `GRANT` lets Django create its temporary test database when you run the tests.
+
+**Using a different port?** If another database already uses port 3306, set `DB_PORT` to the port your MariaDB server listens on, for example:
+
+```powershell
+$env:DB_PORT = "3307"        # PowerShell
+```
+
+```bash
+export DB_PORT=3307          # macOS / Linux
+```
+
+Unset it (or close the terminal) to return to the default of 3306.
+
+---
+
+## Run with Docker
+
+Requires [Docker Desktop](https://www.docker.com/products/docker-desktop/) (or Docker Engine with the Compose plugin).
+
+### Option A: Docker Compose with MariaDB (recommended)
+
+This starts two containers: the Django site and a MariaDB database.
+
+1. **Create your settings file** from the example:
+
+   ```bash
+   cp .env.example .env              # Windows: copy .env.example .env
+   ```
+
+2. **Add your own secrets** to `.env`. See [Getting your own secrets](#getting-your-own-secrets) below. Never commit `.env`.
+
+3. **Build and start everything:**
+
+   ```bash
+   docker compose up --build
+   ```
+
+4. **Load the demo data** (in a second terminal):
+
+   ```bash
+   docker compose exec web python manage.py seed_demo
+   ```
+
+5. Open <http://127.0.0.1:8000/> and log in with a [demo account](#demo-accounts).
+
+Stop the stack with `docker compose down`. Your database is kept in a Docker volume. To delete the data as well, run `docker compose down -v`.
+
+Notes:
+
+- The Compose file sets `DB_HOST=db` and `DB_PORT=3306` for the web container, so the values of those two in `.env` are ignored inside Docker.
+- Leave `USE_SQLITE` unset in `.env`, otherwise the site will not use MariaDB.
+- `DB_PASSWORD` becomes the password of the `news_user` account the first time the database is created. If you change it later, run `docker compose down -v` so MariaDB starts fresh.
+
+### Option B: single container with SQLite (quickest test)
+
+```bash
+docker build -t daily-dispatch .
+docker run --rm --name dispatch -p 8000:8000 -e USE_SQLITE=1 daily-dispatch
+```
+
+In a second terminal:
+
+```bash
+docker exec dispatch python manage.py seed_demo
+```
+
+Data is lost when the container stops.
+
+### Getting your own secrets
+
+Secrets are never stored in this repository. Create them yourself and put them in `.env` (Docker) or in environment variables (local runs):
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(50))"
+```
+
+Run it once for each of these values:
+
+| Variable | What to use |
+|---|---|
+| `DJANGO_SECRET_KEY` | A long random string from the command above |
+| `DB_PASSWORD` | A password of your choice for the database user |
+| `INTERNAL_API_TOKEN` | A long random string from the command above |
+
+The generated strings contain only letters, digits, `-` and `_`, so they are safe to paste into `.env` without quotes.
+
+---
+
 ## Demo data and accounts
 
 ```bash
 python manage.py seed_demo            # safe to re-run
 ```
 
-The seed creates 3 publishers, 6 articles (2 left pending for review), 2 newsletters and 6 users. All demo passwords are **`Mzanzi2026!`**.
+The seed creates 3 publishers, 6 articles (2 left pending for review), 2 newsletters and 6 users. All demo passwords are **`Mzanzi2026!`**. These accounts are for local demonstration only.
 
 ### Demo accounts
 
@@ -211,7 +301,7 @@ Both readers have a personalised **My feed** on first login.
 - Defensive coding: input validation and exception handling around email and HTTP calls.
 - Security: access control on every view and endpoint, CSRF protection, hashed passwords, secrets from environment variables.
 - Normalised database (3NF).
-- Maintainability: tests, README, pinned `requirements.txt`.
+- Maintainability: tests, README, pinned `requirements.txt`, generated documentation.
 - Usability: consistent responsive UI built on Bootstrap 5.
 
 ---
@@ -314,7 +404,7 @@ When an editor approves an article:
 
 Everything is wrapped in `try/except`, so a mail outage or dead webhook never blocks the editor.
 
-**We use the `notified` flag** :`post_save` to fire on every save. Without the flag, editing an approved article would email every subscriber again.
+**Why the `notified` flag?** `post_save` fires on every save. Without the flag, editing an approved article would email every subscriber again.
 
 **The webhook.** `POST /api/approved/` is called by the server itself. It rejects any request without the matching `X-Internal-Token` and writes the payload to `approved_articles.log`.
 
@@ -329,7 +419,6 @@ Authentication is token based. Send the token in a header:
 ```
 Authorization: Token <your-token>
 ```
-
 
 | Method | Endpoint | Who | Purpose |
 |---|---|---|---|
@@ -381,13 +470,31 @@ The suite covers:
 - **Web access:** anonymous users are redirected, readers cannot open the review queue, editors can approve.
 
 All email and HTTP calls are mocked, so tests are fast and never touch the network.
-In case you want to push production you can always use the production configurations.
+
+---
+
+## Documentation (Sphinx)
+
+The code is documented with Sphinx-style docstrings, and the generated HTML is committed in the repository.
+
+**Read it:** open `docs/_build/html/index.html` in a browser.
+
+**Rebuild it** after changing docstrings:
+
+```bash
+pip install -r requirements-docs.txt
+cd docs
+make clean
+make html                 # Windows: make.bat html
+```
+
+The documentation build uses SQLite automatically (set in `docs/conf.py`), so it does not need MariaDB or Docker.
 
 ---
 
 ## Configuration
 
-Settings are read from environment variables (see `.env.example`).
+Settings are read from environment variables. `.env.example` lists them all with placeholder values. Docker Compose reads them from `.env`; for local runs, set them in your terminal.
 
 | Variable | Default | Purpose |
 |---|---|---|
@@ -396,13 +503,23 @@ Settings are read from environment variables (see `.env.example`).
 | `DB_NAME` | `news_db` | MariaDB database name |
 | `DB_USER` | `news_user` | MariaDB user |
 | `DB_PASSWORD` | `ChangeMe123!` | MariaDB password |
-| `DB_HOST` | `127.0.0.1` | MariaDB host |
-| `DB_PORT` | `3306` | MariaDB port; change if your server uses another |
+| `DB_HOST` | `127.0.0.1` | MariaDB host (set to `db` by Docker Compose) |
+| `DB_PORT` | `3306` | MariaDB port; change it if your server uses another |
 | `USE_SQLITE` | unset | Set to `1` to use SQLite instead of MariaDB |
 | `APPROVED_API_URL` | `http://127.0.0.1:8000/api/approved/` | Internal webhook target |
 | `INTERNAL_API_TOKEN` | `dev-internal-token` | Shared secret for `/api/approved/` |
 
-Never commit real passwords. Recommended `.gitignore`:
+Setting a variable for the current terminal session only:
+
+```powershell
+$env:DB_PASSWORD = "your-password"    # Windows PowerShell
+```
+
+```bash
+export DB_PASSWORD="your-password"    # macOS / Linux
+```
+
+Never commit real passwords or your `.env` file. Recommended `.gitignore`:
 
 ```
 venv/
@@ -414,6 +531,22 @@ staticfiles/
 approved_articles.log
 ```
 
+Do **not** ignore `docs/_build/`: the generated documentation is part of the repository.
+
+---
+
+## Git workflow
+
+Work was done on short-lived branches and merged into `main` through pull requests:
+
+| Branch | Purpose |
+|---|---|
+| `docs` | Docstrings and the Sphinx documentation |
+| `container` | Dockerfile and Docker Compose setup |
+| `readme` | README updates |
+
+Commit messages follow the Conventional Commits style (`docs:`, `build:`, `chore:`, `fix:`).
+
 ---
 
 ## Project structure
@@ -421,7 +554,12 @@ approved_articles.log
 ```
 news_capstone/
 ├── manage.py
-├── requirements.txt
+├── requirements.txt         # application dependencies
+├── requirements-docs.txt    # Sphinx and its theme
+├── Dockerfile
+├── docker-compose.yml       # Django site + MariaDB
+├── .dockerignore
+├── .env.example             # configuration template (copy to .env)
 ├── README.md
 ├── news_project/            # settings and root URLs
 ├── news/
@@ -446,8 +584,24 @@ news_capstone/
 │   ├── partials/
 │   ├── registration/        # login.html, register.html
 │   └── news/                # article, review, newsletter, subscription pages
-└── docs/                    # ERD, wireframes, screenshots
+└── docs/                    # Sphinx source and built HTML, ERD, wireframes, screenshots
+    ├── conf.py
+    ├── index.rst
+    ├── _build/html/         # generated documentation
+    └── screenshots/
 ```
+
+---
+
+## Troubleshooting
+
+| Problem | Fix |
+|---|---|
+| `Bind for 0.0.0.0:8000 failed: port is already allocated` | Something else uses port 8000. Stop it (for example a local `runserver`), or change the mapping in `docker-compose.yml` to `"8001:8000"` and browse to port 8001. |
+| `Unknown server host 'db'` | The web container is not on the Compose network. Run `docker compose down --remove-orphans`, then `docker compose up`. Start the stack through Compose, not from individual containers. |
+| `Can't connect to MySQL server` when running locally | Check that MariaDB is running and that `DB_PORT` matches the port it listens on. |
+| Database password changed but login still fails in Docker | The old password is stored in the volume. Run `docker compose down -v`, then start again. |
+| Sphinx build error mentioning a database | Run `python manage.py migrate` with `USE_SQLITE=1`, then rebuild the docs. |
 
 ---
 
@@ -460,13 +614,11 @@ Screenshots live in `docs/screenshots/`.
 ![Subscriptions](docs/screenshots/subscriptions.png)
 ![Tests passing](docs/screenshots/tests-passing.png)
 
+---
 
 ## Author
 
 **Manzezulu Mazibuko**
 
-GitHub:  
-https://github.com/manzezulu
-
-LinkedIn:  
-https://www.linkedin.com/in/manzezulu-mazibuko-b62a26177/
+- GitHub: <https://github.com/manzezulu>
+- LinkedIn: <https://www.linkedin.com/in/manzezulu-mazibuko-b62a26177/>
