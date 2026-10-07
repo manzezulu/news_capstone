@@ -20,7 +20,7 @@ services:
     env_file: .env
     environment:
       DB_HOST: db
-      DB_PORT: "3307"
+      DB_PORT: "3306"
     depends_on:
       db:
         condition: service_healthy
