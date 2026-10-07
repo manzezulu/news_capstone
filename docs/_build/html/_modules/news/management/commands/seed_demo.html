@@ -1,0 +1,441 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>news.management.commands.seed_demo &mdash; Daily Dispatch 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            Daily Dispatch
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../modules.html">news</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">Daily Dispatch</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">news.management.commands.seed_demo</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for news.management.commands.seed_demo</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Seed the database with South African demo content.</span>
+
+<span class="sd">Usage:</span>
+<span class="sd">    python manage.py seed_demo            # idempotent - skips what exists</span>
+<span class="sd">    python manage.py seed_demo --reset    # wipes demo data first, then reseeds</span>
+
+<span class="sd">All users share the same password (see PASSWORD below).</span>
+<span class="sd">"""</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">django.contrib.auth</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_user_model</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">django.core.management.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseCommand</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">django.db</span><span class="w"> </span><span class="kn">import</span> <span class="n">transaction</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">news.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Article</span><span class="p">,</span> <span class="n">Newsletter</span><span class="p">,</span> <span class="n">Publisher</span>
+
+<span class="n">User</span> <span class="o">=</span> <span class="n">get_user_model</span><span class="p">()</span>
+
+<span class="n">PASSWORD</span> <span class="o">=</span> <span class="s1">'Mzanzi2026!'</span>
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Users — two per role</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="n">USERS</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="c1"># Readers</span>
+    <span class="p">(</span><span class="s1">'manzezulu'</span><span class="p">,</span> <span class="s1">'manzezulu@example.co.za'</span><span class="p">,</span> <span class="s1">'reader'</span><span class="p">,</span> <span class="s1">'Manzezulu'</span><span class="p">,</span> <span class="s1">'Dlamini'</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">'rain'</span><span class="p">,</span>      <span class="s1">'rain@example.co.za'</span><span class="p">,</span>      <span class="s1">'reader'</span><span class="p">,</span> <span class="s1">'Rain'</span><span class="p">,</span>      <span class="s1">'Mokoena'</span><span class="p">),</span>
+
+    <span class="c1"># Journalists</span>
+    <span class="p">(</span><span class="s1">'kwenza'</span><span class="p">,</span>    <span class="s1">'kwenza@example.co.za'</span><span class="p">,</span>    <span class="s1">'journalist'</span><span class="p">,</span> <span class="s1">'Kwenza'</span><span class="p">,</span>   <span class="s1">'Ndlovu'</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">'themba'</span><span class="p">,</span>    <span class="s1">'themba@example.co.za'</span><span class="p">,</span>    <span class="s1">'journalist'</span><span class="p">,</span> <span class="s1">'Themba'</span><span class="p">,</span>   <span class="s1">'Sithole'</span><span class="p">),</span>
+
+    <span class="c1"># Editors</span>
+    <span class="p">(</span><span class="s1">'mkhwanazi'</span><span class="p">,</span> <span class="s1">'mkhwanazi@example.co.za'</span><span class="p">,</span> <span class="s1">'editor'</span><span class="p">,</span> <span class="s1">'Sipho'</span><span class="p">,</span>    <span class="s1">'Mkhwanazi'</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">'simphiwe'</span><span class="p">,</span>  <span class="s1">'simphiwe@example.co.za'</span><span class="p">,</span>  <span class="s1">'editor'</span><span class="p">,</span> <span class="s1">'Simphiwe'</span><span class="p">,</span> <span class="s1">'Khumalo'</span><span class="p">),</span>
+<span class="p">]</span>
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Publishers — SA-flavoured mastheads</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="n">PUBLISHERS</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">{</span>
+        <span class="s1">'name'</span><span class="p">:</span> <span class="s1">'The Cape Chronicle'</span><span class="p">,</span>
+        <span class="s1">'description'</span><span class="p">:</span> <span class="s1">'A Cape Town daily covering the Mother City and the Western Cape.'</span><span class="p">,</span>
+        <span class="s1">'editors'</span><span class="p">:</span> <span class="p">[</span><span class="s1">'mkhwanazi'</span><span class="p">],</span>
+        <span class="s1">'journalists'</span><span class="p">:</span> <span class="p">[</span><span class="s1">'kwenza'</span><span class="p">,</span> <span class="s1">'themba'</span><span class="p">],</span>
+    <span class="p">},</span>
+    <span class="p">{</span>
+        <span class="s1">'name'</span><span class="p">:</span> <span class="s1">'Highveld Herald'</span><span class="p">,</span>
+        <span class="s1">'description'</span><span class="p">:</span> <span class="s1">'Johannesburg-based reporting on Gauteng business, politics, and culture.'</span><span class="p">,</span>
+        <span class="s1">'editors'</span><span class="p">:</span> <span class="p">[</span><span class="s1">'simphiwe'</span><span class="p">],</span>
+        <span class="s1">'journalists'</span><span class="p">:</span> <span class="p">[</span><span class="s1">'kwenza'</span><span class="p">],</span>
+    <span class="p">},</span>
+    <span class="p">{</span>
+        <span class="s1">'name'</span><span class="p">:</span> <span class="s1">'KZN Coastal Times'</span><span class="p">,</span>
+        <span class="s1">'description'</span><span class="p">:</span> <span class="s1">'Durban and KwaZulu-Natal storytelling — from the harbour to the Drakensberg.'</span><span class="p">,</span>
+        <span class="s1">'editors'</span><span class="p">:</span> <span class="p">[</span><span class="s1">'mkhwanazi'</span><span class="p">,</span> <span class="s1">'simphiwe'</span><span class="p">],</span>
+        <span class="s1">'journalists'</span><span class="p">:</span> <span class="p">[</span><span class="s1">'themba'</span><span class="p">],</span>
+    <span class="p">},</span>
+<span class="p">]</span>
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Articles</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="n">ARTICLES</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">{</span>
+        <span class="s1">'title'</span><span class="p">:</span> <span class="s1">'Taxi Associations Trial Cashless Payments Across Soweto Routes'</span><span class="p">,</span>
+        <span class="s1">'content'</span><span class="p">:</span> <span class="p">(</span>
+            <span class="s1">'Three of Soweto</span><span class="se">\u2019</span><span class="s1">s largest taxi associations have begun a six-month pilot '</span>
+            <span class="s1">'for cashless fare collection on the busiest routes between Orlando, Dobsonville, '</span>
+            <span class="s1">'and the Johannesburg CBD.</span><span class="se">\n\n</span><span class="s1">'</span>
+            <span class="s1">'Commuters now tap a preloaded card or scan a QR code at the door. The associations '</span>
+            <span class="s1">'say the system cuts queue times, reduces armed robbery risk, and gives drivers a '</span>
+            <span class="s1">'verifiable daily record of earnings.</span><span class="se">\n\n</span><span class="s1">'</span>
+            <span class="s1">'</span><span class="se">\u201c</span><span class="s1">We have been talking about this for years,</span><span class="se">\u201d</span><span class="s1"> said a route marshal at Baragwanath '</span>
+            <span class="s1">'rank. </span><span class="se">\u201c</span><span class="s1">Now we are actually doing it.</span><span class="se">\u201d\n\n</span><span class="s1">'</span>
+            <span class="s1">'The pilot covers roughly 40,000 daily passengers. If it holds, the association says '</span>
+            <span class="s1">'it will roll out to 200 vehicles by next winter.'</span>
+        <span class="p">),</span>
+        <span class="s1">'author'</span><span class="p">:</span> <span class="s1">'kwenza'</span><span class="p">,</span>
+        <span class="s1">'publisher'</span><span class="p">:</span> <span class="s1">'Highveld Herald'</span><span class="p">,</span>
+        <span class="s1">'approved'</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="p">{</span>
+        <span class="s1">'title'</span><span class="p">:</span> <span class="s1">'Table Mountain Fynbos Recovery Project Passes First Milestone'</span><span class="p">,</span>
+        <span class="s1">'content'</span><span class="p">:</span> <span class="p">(</span>
+            <span class="s1">'A five-year effort to regrow native fynbos on fire-scarred slopes above Cape Town '</span>
+            <span class="s1">'has reached its first planting milestone, with volunteers and SANParks rangers '</span>
+            <span class="s1">'putting more than 12,000 endemic seedlings into the ground this season.</span><span class="se">\n\n</span><span class="s1">'</span>
+            <span class="s1">'The species list reads like a botanist</span><span class="se">\u2019</span><span class="s1">s wish list: king proteas, silver trees, '</span>
+            <span class="s1">'buchu, and several ericas found nowhere else on Earth.</span><span class="se">\n\n</span><span class="s1">'</span>
+            <span class="s1">'Fire is not the enemy here </span><span class="se">\u2014</span><span class="s1"> it is part of the cycle. The trick, rangers say, is '</span>
+            <span class="s1">'making sure the mountain burns at the right intervals, and that invasives do not '</span>
+            <span class="s1">'win the race afterwards.'</span>
+        <span class="p">),</span>
+        <span class="s1">'author'</span><span class="p">:</span> <span class="s1">'kwenza'</span><span class="p">,</span>
+        <span class="s1">'publisher'</span><span class="p">:</span> <span class="s1">'The Cape Chronicle'</span><span class="p">,</span>
+        <span class="s1">'approved'</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="p">{</span>
+        <span class="s1">'title'</span><span class="p">:</span> <span class="s1">'Durban Harbour Expansion Sparks Debate Over Local Fishing Grounds'</span><span class="p">,</span>
+        <span class="s1">'content'</span><span class="p">:</span> <span class="p">(</span>
+            <span class="s1">'The long-awaited expansion of Durban Harbour has entered its environmental '</span>
+            <span class="s1">'assessment phase, and small-scale fishers are asking hard questions about what '</span>
+            <span class="s1">'dredging will do to the prawn and sardine runs they depend on.</span><span class="se">\n\n</span><span class="s1">'</span>
+            <span class="s1">'Port authorities argue the expansion is essential for container traffic and jobs. '</span>
+            <span class="s1">'Fisher co-operatives want a co-managed marine protected zone as compensation.</span><span class="se">\n\n</span><span class="s1">'</span>
+            <span class="s1">'Public comment closes at the end of next month.'</span>
+        <span class="p">),</span>
+        <span class="s1">'author'</span><span class="p">:</span> <span class="s1">'themba'</span><span class="p">,</span>
+        <span class="s1">'publisher'</span><span class="p">:</span> <span class="s1">'KZN Coastal Times'</span><span class="p">,</span>
+        <span class="s1">'approved'</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="p">{</span>
+        <span class="s1">'title'</span><span class="p">:</span> <span class="s1">'How Stellenbosch Wine Farms Are Adapting to Warmer Seasons'</span><span class="p">,</span>
+        <span class="s1">'content'</span><span class="p">:</span> <span class="p">(</span>
+            <span class="s1">'Winemakers in the Cape Winelands are quietly rewriting decades-old playbooks.</span><span class="se">\n\n</span><span class="s1">'</span>
+            <span class="s1">'Earlier harvests, new varietals from Portugal and southern Italy, and shade nets '</span>
+            <span class="s1">'are all part of the response to warmer, drier summers. Some estates are moving '</span>
+            <span class="s1">'vineyards uphill in search of cooler nights.</span><span class="se">\n\n</span><span class="s1">'</span>
+            <span class="s1">'</span><span class="se">\u201c</span><span class="s1">We cannot fight the climate,</span><span class="se">\u201d</span><span class="s1"> one cellar master said. </span><span class="se">\u201c</span><span class="s1">We can only '</span>
+            <span class="s1">'read it faster than our neighbours.</span><span class="se">\u201d</span><span class="s1">'</span>
+        <span class="p">),</span>
+        <span class="s1">'author'</span><span class="p">:</span> <span class="s1">'themba'</span><span class="p">,</span>
+        <span class="s1">'publisher'</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>   <span class="c1"># independent</span>
+        <span class="s1">'approved'</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="p">{</span>
+        <span class="s1">'title'</span><span class="p">:</span> <span class="s1">'Joburg Inner-City Rooftop Gardens Feed 900 Households'</span><span class="p">,</span>
+        <span class="s1">'content'</span><span class="p">:</span> <span class="p">(</span>
+            <span class="s1">'An unlikely food network has taken root on the rooftops of Braamfontein and '</span>
+            <span class="s1">'Hillbrow: 22 gardens, run by residents and a handful of NGOs, that together now '</span>
+            <span class="s1">'supply fresh vegetables to nearly 900 households.</span><span class="se">\n\n</span><span class="s1">'</span>
+            <span class="s1">'Spinach, kale, tomatoes, and herbs grow in repurposed crates. Grey water from '</span>
+            <span class="s1">'nearby buildings is filtered and reused.</span><span class="se">\n\n</span><span class="s1">'</span>
+            <span class="s1">'The project started as a lockdown workaround. It has become permanent infrastructure.'</span>
+        <span class="p">),</span>
+        <span class="s1">'author'</span><span class="p">:</span> <span class="s1">'kwenza'</span><span class="p">,</span>
+        <span class="s1">'publisher'</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>   <span class="c1"># independent</span>
+        <span class="s1">'approved'</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="p">{</span>
+        <span class="s1">'title'</span><span class="p">:</span> <span class="s1">'South Africa</span><span class="se">\u2019</span><span class="s1">s First Grid-Scale Battery Storage Site Comes Online'</span><span class="p">,</span>
+        <span class="s1">'content'</span><span class="p">:</span> <span class="p">(</span>
+            <span class="s1">'A 300 MWh battery installation in the Northern Cape has begun feeding power '</span>
+            <span class="s1">'into the national grid, marking the country</span><span class="se">\u2019</span><span class="s1">s first grid-scale storage project.</span><span class="se">\n\n</span><span class="s1">'</span>
+            <span class="s1">'The site stores surplus solar power generated during the day and releases it '</span>
+            <span class="s1">'during the evening peak, easing pressure on Eskom</span><span class="se">\u2019</span><span class="s1">s ageing coal fleet.</span><span class="se">\n\n</span><span class="s1">'</span>
+            <span class="s1">'Two more sites are under construction and expected online within eighteen months.'</span>
+        <span class="p">),</span>
+        <span class="s1">'author'</span><span class="p">:</span> <span class="s1">'themba'</span><span class="p">,</span>
+        <span class="s1">'publisher'</span><span class="p">:</span> <span class="s1">'Highveld Herald'</span><span class="p">,</span>
+        <span class="s1">'approved'</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="p">{</span>
+        <span class="s1">'title'</span><span class="p">:</span> <span class="s1">'A Pending Story: Cape Flats Cycling Clubs Seek Municipal Support'</span><span class="p">,</span>
+        <span class="s1">'content'</span><span class="p">:</span> <span class="p">(</span>
+            <span class="s1">'Cycling clubs across the Cape Flats are asking the city for safer routes and '</span>
+            <span class="s1">'shared storage facilities.</span><span class="se">\n\n</span><span class="s1">'</span>
+            <span class="s1">'This article is deliberately left unapproved so it shows up in the review queue '</span>
+            <span class="s1">'for editors to practise approving, rejecting, or editing.'</span>
+        <span class="p">),</span>
+        <span class="s1">'author'</span><span class="p">:</span> <span class="s1">'kwenza'</span><span class="p">,</span>
+        <span class="s1">'publisher'</span><span class="p">:</span> <span class="s1">'The Cape Chronicle'</span><span class="p">,</span>
+        <span class="s1">'approved'</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="p">{</span>
+        <span class="s1">'title'</span><span class="p">:</span> <span class="s1">'A Pending Story: Durban Poets Launch Mobile Reading Room'</span><span class="p">,</span>
+        <span class="s1">'content'</span><span class="p">:</span> <span class="p">(</span>
+            <span class="s1">'A retrofitted minibus has become a roving reading room in Durban North, '</span>
+            <span class="s1">'stocked with donated poetry, novels, and children</span><span class="se">\u2019</span><span class="s1">s books.</span><span class="se">\n\n</span><span class="s1">'</span>
+            <span class="s1">'Left unapproved so editors can exercise the review workflow.'</span>
+        <span class="p">),</span>
+        <span class="s1">'author'</span><span class="p">:</span> <span class="s1">'themba'</span><span class="p">,</span>
+        <span class="s1">'publisher'</span><span class="p">:</span> <span class="s1">'KZN Coastal Times'</span><span class="p">,</span>
+        <span class="s1">'approved'</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">},</span>
+<span class="p">]</span>
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Newsletters</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="n">NEWSLETTERS</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">{</span>
+        <span class="s1">'title'</span><span class="p">:</span> <span class="s1">'The Weekly Dispatch'</span><span class="p">,</span>
+        <span class="s1">'description'</span><span class="p">:</span> <span class="s1">'A Sunday roundup of the week</span><span class="se">\u2019</span><span class="s1">s best stories from across our titles.'</span><span class="p">,</span>
+        <span class="s1">'author'</span><span class="p">:</span> <span class="s1">'kwenza'</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="p">{</span>
+        <span class="s1">'title'</span><span class="p">:</span> <span class="s1">'The Coastal Report'</span><span class="p">,</span>
+        <span class="s1">'description'</span><span class="p">:</span> <span class="s1">'Durban and KZN stories — harbour, hills, and hinterland.'</span><span class="p">,</span>
+        <span class="s1">'author'</span><span class="p">:</span> <span class="s1">'themba'</span><span class="p">,</span>
+    <span class="p">},</span>
+<span class="p">]</span>
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Command</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<div class="viewcode-block" id="Command">
+<a class="viewcode-back" href="../../../../news.management.commands.html#news.management.commands.seed_demo.Command">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Command</span><span class="p">(</span><span class="n">BaseCommand</span><span class="p">):</span>
+    <span class="n">help</span> <span class="o">=</span> <span class="s1">'Seed the database with South African demo content.'</span>
+
+<div class="viewcode-block" id="Command.add_arguments">
+<a class="viewcode-back" href="../../../../news.management.commands.html#news.management.commands.seed_demo.Command.add_arguments">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_arguments</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parser</span><span class="p">):</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+            <span class="s1">'--reset'</span><span class="p">,</span>
+            <span class="n">action</span><span class="o">=</span><span class="s1">'store_true'</span><span class="p">,</span>
+            <span class="n">help</span><span class="o">=</span><span class="s1">'Delete existing demo data before seeding.'</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Command.handle">
+<a class="viewcode-back" href="../../../../news.management.commands.html#news.management.commands.seed_demo.Command.handle">[docs]</a>
+    <span class="nd">@transaction</span><span class="o">.</span><span class="n">atomic</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">handle</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">options</span><span class="p">[</span><span class="s1">'reset'</span><span class="p">]:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">'Resetting demo data…'</span><span class="p">)</span>
+            <span class="n">Article</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span>
+                <span class="n">title__in</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">[</span><span class="s1">'title'</span><span class="p">]</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">ARTICLES</span><span class="p">]</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">delete</span><span class="p">()</span>
+            <span class="n">Newsletter</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span>
+                <span class="n">title__in</span><span class="o">=</span><span class="p">[</span><span class="n">n</span><span class="p">[</span><span class="s1">'title'</span><span class="p">]</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">NEWSLETTERS</span><span class="p">]</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">delete</span><span class="p">()</span>
+            <span class="n">Publisher</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span>
+                <span class="n">name__in</span><span class="o">=</span><span class="p">[</span><span class="n">p</span><span class="p">[</span><span class="s1">'name'</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">PUBLISHERS</span><span class="p">]</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">delete</span><span class="p">()</span>
+            <span class="n">User</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span>
+                <span class="n">username__in</span><span class="o">=</span><span class="p">[</span><span class="n">u</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">u</span> <span class="ow">in</span> <span class="n">USERS</span><span class="p">]</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">delete</span><span class="p">()</span>
+
+        <span class="n">users</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_users</span><span class="p">()</span>
+        <span class="n">publishers</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_publishers</span><span class="p">(</span><span class="n">users</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_make_articles</span><span class="p">(</span><span class="n">users</span><span class="p">,</span> <span class="n">publishers</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_make_newsletters</span><span class="p">(</span><span class="n">users</span><span class="p">,</span> <span class="n">publishers</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_subscribe_readers</span><span class="p">(</span><span class="n">users</span><span class="p">,</span> <span class="n">publishers</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">style</span><span class="o">.</span><span class="n">SUCCESS</span><span class="p">(</span><span class="s1">'</span><span class="se">\n</span><span class="s1">Demo data ready.'</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s1">'  Shared password: </span><span class="si">{</span><span class="n">PASSWORD</span><span class="si">}</span><span class="se">\n</span><span class="s1">'</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">'  Readers'</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">'    manzezulu  (Manzezulu Dlamini)'</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">'    rain       (Rain Mokoena)'</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">'  Journalists'</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">'    kwenza     (Kwenza Ndlovu)'</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">'    themba     (Themba Sithole)'</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">'  Editors'</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">'    mkhwanazi  (Sipho Mkhwanazi)'</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">'    simphiwe   (Simphiwe Khumalo)'</span><span class="p">)</span></div>
+
+
+    <span class="c1"># -- helpers ------------------------------------------------------------</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_make_users</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">users</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">username</span><span class="p">,</span> <span class="n">email</span><span class="p">,</span> <span class="n">role</span><span class="p">,</span> <span class="n">first</span><span class="p">,</span> <span class="n">last</span> <span class="ow">in</span> <span class="n">USERS</span><span class="p">:</span>
+            <span class="n">user</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">User</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">get_or_create</span><span class="p">(</span>
+                <span class="n">username</span><span class="o">=</span><span class="n">username</span><span class="p">,</span>
+                <span class="n">defaults</span><span class="o">=</span><span class="p">{</span><span class="s1">'email'</span><span class="p">:</span> <span class="n">email</span><span class="p">,</span> <span class="s1">'role'</span><span class="p">:</span> <span class="n">role</span><span class="p">},</span>
+            <span class="p">)</span>
+            <span class="n">user</span><span class="o">.</span><span class="n">email</span> <span class="o">=</span> <span class="n">email</span>
+            <span class="n">user</span><span class="o">.</span><span class="n">role</span> <span class="o">=</span> <span class="n">role</span>
+            <span class="n">user</span><span class="o">.</span><span class="n">first_name</span> <span class="o">=</span> <span class="n">first</span>
+            <span class="n">user</span><span class="o">.</span><span class="n">last_name</span> <span class="o">=</span> <span class="n">last</span>
+            <span class="n">user</span><span class="o">.</span><span class="n">set_password</span><span class="p">(</span><span class="n">PASSWORD</span><span class="p">)</span>
+            <span class="n">user</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+            <span class="n">users</span><span class="p">[</span><span class="n">username</span><span class="p">]</span> <span class="o">=</span> <span class="n">user</span>
+        <span class="k">return</span> <span class="n">users</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_make_publishers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">users</span><span class="p">):</span>
+        <span class="n">publishers</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">spec</span> <span class="ow">in</span> <span class="n">PUBLISHERS</span><span class="p">:</span>
+            <span class="n">publisher</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">Publisher</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">get_or_create</span><span class="p">(</span>
+                <span class="n">name</span><span class="o">=</span><span class="n">spec</span><span class="p">[</span><span class="s1">'name'</span><span class="p">],</span>
+                <span class="n">defaults</span><span class="o">=</span><span class="p">{</span><span class="s1">'description'</span><span class="p">:</span> <span class="n">spec</span><span class="p">[</span><span class="s1">'description'</span><span class="p">]},</span>
+            <span class="p">)</span>
+            <span class="n">publisher</span><span class="o">.</span><span class="n">description</span> <span class="o">=</span> <span class="n">spec</span><span class="p">[</span><span class="s1">'description'</span><span class="p">]</span>
+            <span class="n">publisher</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+            <span class="n">publisher</span><span class="o">.</span><span class="n">editors</span><span class="o">.</span><span class="n">set</span><span class="p">([</span><span class="n">users</span><span class="p">[</span><span class="n">u</span><span class="p">]</span> <span class="k">for</span> <span class="n">u</span> <span class="ow">in</span> <span class="n">spec</span><span class="p">[</span><span class="s1">'editors'</span><span class="p">]])</span>
+            <span class="n">publisher</span><span class="o">.</span><span class="n">journalists</span><span class="o">.</span><span class="n">set</span><span class="p">([</span><span class="n">users</span><span class="p">[</span><span class="n">u</span><span class="p">]</span> <span class="k">for</span> <span class="n">u</span> <span class="ow">in</span> <span class="n">spec</span><span class="p">[</span><span class="s1">'journalists'</span><span class="p">]])</span>
+            <span class="n">publishers</span><span class="p">[</span><span class="n">spec</span><span class="p">[</span><span class="s1">'name'</span><span class="p">]]</span> <span class="o">=</span> <span class="n">publisher</span>
+        <span class="k">return</span> <span class="n">publishers</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_make_articles</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">users</span><span class="p">,</span> <span class="n">publishers</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">spec</span> <span class="ow">in</span> <span class="n">ARTICLES</span><span class="p">:</span>
+            <span class="n">Article</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">update_or_create</span><span class="p">(</span>
+                <span class="n">title</span><span class="o">=</span><span class="n">spec</span><span class="p">[</span><span class="s1">'title'</span><span class="p">],</span>
+                <span class="n">defaults</span><span class="o">=</span><span class="p">{</span>
+                    <span class="s1">'content'</span><span class="p">:</span> <span class="n">spec</span><span class="p">[</span><span class="s1">'content'</span><span class="p">],</span>
+                    <span class="s1">'author'</span><span class="p">:</span> <span class="n">users</span><span class="p">[</span><span class="n">spec</span><span class="p">[</span><span class="s1">'author'</span><span class="p">]],</span>
+                    <span class="s1">'publisher'</span><span class="p">:</span> <span class="n">publishers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">spec</span><span class="p">[</span><span class="s1">'publisher'</span><span class="p">]),</span>
+                    <span class="s1">'approved'</span><span class="p">:</span> <span class="n">spec</span><span class="p">[</span><span class="s1">'approved'</span><span class="p">],</span>
+                    <span class="s1">'notified'</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>   <span class="c1"># never re-fire the approval signal</span>
+                <span class="p">},</span>
+            <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_make_newsletters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">users</span><span class="p">,</span> <span class="n">publishers</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">spec</span> <span class="ow">in</span> <span class="n">NEWSLETTERS</span><span class="p">:</span>
+            <span class="n">newsletter</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">Newsletter</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">get_or_create</span><span class="p">(</span>
+                <span class="n">title</span><span class="o">=</span><span class="n">spec</span><span class="p">[</span><span class="s1">'title'</span><span class="p">],</span>
+                <span class="n">defaults</span><span class="o">=</span><span class="p">{</span>
+                    <span class="s1">'description'</span><span class="p">:</span> <span class="n">spec</span><span class="p">[</span><span class="s1">'description'</span><span class="p">],</span>
+                    <span class="s1">'author'</span><span class="p">:</span> <span class="n">users</span><span class="p">[</span><span class="n">spec</span><span class="p">[</span><span class="s1">'author'</span><span class="p">]],</span>
+                <span class="p">},</span>
+            <span class="p">)</span>
+            <span class="n">newsletter</span><span class="o">.</span><span class="n">description</span> <span class="o">=</span> <span class="n">spec</span><span class="p">[</span><span class="s1">'description'</span><span class="p">]</span>
+            <span class="n">newsletter</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+            <span class="n">approved</span> <span class="o">=</span> <span class="n">Article</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">approved</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="c1"># Give each newsletter its own flavour: Kwenza's gets Cape/Highveld,</span>
+            <span class="c1"># Themba's gets KZN + independent.</span>
+            <span class="k">if</span> <span class="n">spec</span><span class="p">[</span><span class="s1">'author'</span><span class="p">]</span> <span class="o">==</span> <span class="s1">'kwenza'</span><span class="p">:</span>
+                <span class="n">approved</span> <span class="o">=</span> <span class="n">approved</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">publisher__in</span><span class="o">=</span><span class="p">[</span>
+                    <span class="n">publishers</span><span class="p">[</span><span class="s1">'The Cape Chronicle'</span><span class="p">],</span>
+                    <span class="n">publishers</span><span class="p">[</span><span class="s1">'Highveld Herald'</span><span class="p">],</span>
+                <span class="p">])</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">approved</span> <span class="o">=</span> <span class="n">approved</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">publisher__in</span><span class="o">=</span><span class="p">[</span>
+                    <span class="n">publishers</span><span class="p">[</span><span class="s1">'KZN Coastal Times'</span><span class="p">],</span>
+                <span class="p">])</span> <span class="o">|</span> <span class="n">approved</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">publisher__isnull</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">newsletter</span><span class="o">.</span><span class="n">articles</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">approved</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_subscribe_readers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">users</span><span class="p">,</span> <span class="n">publishers</span><span class="p">):</span>
+        <span class="c1"># Manzezulu follows The Cape Chronicle + Kwenza.</span>
+        <span class="n">users</span><span class="p">[</span><span class="s1">'manzezulu'</span><span class="p">]</span><span class="o">.</span><span class="n">subscribed_publishers</span><span class="o">.</span><span class="n">set</span><span class="p">([</span>
+            <span class="n">publishers</span><span class="p">[</span><span class="s1">'The Cape Chronicle'</span><span class="p">],</span>
+        <span class="p">])</span>
+        <span class="n">users</span><span class="p">[</span><span class="s1">'manzezulu'</span><span class="p">]</span><span class="o">.</span><span class="n">subscribed_journalists</span><span class="o">.</span><span class="n">set</span><span class="p">([</span>
+            <span class="n">users</span><span class="p">[</span><span class="s1">'kwenza'</span><span class="p">],</span>
+        <span class="p">])</span>
+
+        <span class="c1"># Rain follows KZN Coastal Times + Themba.</span>
+        <span class="n">users</span><span class="p">[</span><span class="s1">'rain'</span><span class="p">]</span><span class="o">.</span><span class="n">subscribed_publishers</span><span class="o">.</span><span class="n">set</span><span class="p">([</span>
+            <span class="n">publishers</span><span class="p">[</span><span class="s1">'KZN Coastal Times'</span><span class="p">],</span>
+        <span class="p">])</span>
+        <span class="n">users</span><span class="p">[</span><span class="s1">'rain'</span><span class="p">]</span><span class="o">.</span><span class="n">subscribed_journalists</span><span class="o">.</span><span class="n">set</span><span class="p">([</span>
+            <span class="n">users</span><span class="p">[</span><span class="s1">'themba'</span><span class="p">],</span>
+        <span class="p">])</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Manzezulu Mazibuko.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
