@@ -57,13 +57,26 @@ python -m venv venv
 source venv/bin/activate          # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
-# Create the MariaDB database first (see Database setup), then: 
+# Create the MariaDB database first (see Database setup), then:
 python manage.py makemigrations
 python manage.py migrate
-python manage.py seed_demo     # pre builtdata for testing
+python manage.py seed_demo     # load demo data
 python manage.py runserver
 ```
 
+## Run with Docker
+Requires Docker Desktop (or Docker Engine with Compose).
+1. Copy the example settings: cp .env.example .env
+2. Edit .env and set your own DJANGO_SECRET_KEY, DB_PASSWORD
+ and INTERNAL_API_TOKEN. Never commit .env.
+3. Start everything: docker compose up --build
+4. Load demo data: docker compose exec web python manage.py seed_demo (on a new terminal)
+5. Open http://127.0.0.1:8000/
+
+## Rebuild the documentation
+pip install -r requirements-docs.txt
+cd docs && make html
+Open docs/_build/html/index.html
 Open <http://127.0.0.1:8000/> and log in with one of the [demo accounts](#demo-accounts).
 
 **Requirements:** Python 3.11+, MariaDB 10.6+. Bootstrap loads from a CDN, so there is no Node or build step.
