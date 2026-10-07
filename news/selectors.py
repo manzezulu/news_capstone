@@ -1,4 +1,7 @@
-"""Reusable article queries."""
+"""Shared read queries for the news app.
+Defines what counts as an "approved" or "subscribed" article once, so
+the web views and the REST API always agree.
+"""
 
 from django.db.models import Q
 
